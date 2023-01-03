@@ -3,11 +3,12 @@ import os.path
 import pickle
 from typing import Dict
 
-import numpy as np
-
 import itertools
 
+import torch
 from torch.utils.data import DataLoader
+
+import config
 
 
 class DatasetFiles:
@@ -36,6 +37,7 @@ def read_images(file):
     with bz2.BZ2File(file, 'rb') as f:
         imgs = pickle.load(f)
         imgs = {k: (v > 0) for k, v in imgs.items()}
+        imgs = {k: torch.from_numpy(v) for k, v in imgs.items()}
         return imgs
 
 
@@ -48,7 +50,7 @@ def read_labels(file):
 
 def preprocess_image(img, max_width, max_height):
     h, w = img.shape
-    padded_img = np.zeros((max_height, max_width), dtype=img.dtype)
+    padded_img = torch.zeros(max_height, max_width, dtype=img.dtype)
     padded_img[:h, :w] = img  # [:max_height, :max_width]
     return padded_img
 
@@ -58,7 +60,7 @@ def preprocess_labels(labels, label2id, max_len=None):
     labels = ["<sos>"] + labels + ["<eos>"]
     if max_len is not None:
         labels = labels[:max_len] + ["<pad>"] * (max_len - len(labels))
-    return np.array([label2id[label] for label in labels])
+    return torch.Tensor([label2id[label] for label in labels])
 
 
 def read_datasets(files):
@@ -110,7 +112,7 @@ class DatasetManager:
             # load and preprocess the datasets
             if verbose:
                 print(f'First time loading and preprocessing the dataset...')
-            self.label2id = self.load_dict()
+            self.label2id = self.load_dictionary()
             train_dataset, test_datasets = self.get_datasets(padding)
 
             # save the datasets to file
@@ -126,11 +128,12 @@ class DatasetManager:
         # to data loaders
         self.make_loaders(train_dataset, test_datasets, batch_size)
 
-    def load_dict(self):
+    def load_dictionary(self):
         with open(self.data_files.dict, 'r') as f:
-            dict = f.read().splitlines()
-        label2id = {'<sos>': 0, '<eos>': 1, '<pad>': 2}
-        label2id.update({label: i + 2 for i, label in enumerate(dict)})
+            dictionary = f.read().splitlines()
+        label2id = config.additional_tokens
+        offset = max(label2id.values()) + 1
+        label2id.update({label: i + offset for i, label in enumerate(dictionary)})
         return label2id
 
     def get_datasets(self, padding=False):
@@ -176,3 +179,8 @@ if __name__ == '__main__':
 
     print('Train samples:', len(crohme.train_loader.dataset))
     print('Test samples:', {name: len(loader.dataset) for name, loader in crohme.test_loaders.items()})
+
+    for batch in crohme.train_loader:
+        print(len(batch[0]), batch[0][0].shape)
+        print(len(batch[1]), batch[1][0].shape)
+        break
