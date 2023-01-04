@@ -18,7 +18,7 @@ class HMERModel(pl.LightningModule, ABC):
 
         if isinstance(inputs, torch.Tensor):
             inputs = inputs.type(torch.FloatTensor).to(self.device)
-            outputs = outputs.to(self.device)
+            outputs = outputs.type(torch.LongTensor).to(self.device)
             pred = self(inputs, outputs)
             pred_flat = pred.view(-1, pred.shape[-1])
             outputs_flat = outputs.view(-1)
