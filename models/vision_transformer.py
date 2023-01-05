@@ -29,18 +29,19 @@ class TrOCR(HMERModel):
     def __init__(self, dataset: DatasetManager):
         super().__init__()
         encoder_config = ViTConfig(
-            hidden_size=100,
-            intermediate_size=400,
+            hidden_size=50,
+            intermediate_size=100,
             num_hidden_layers=3,
             num_attention_heads=10,
             max_image_height=dataset.max_img_h,
             max_image_width=dataset.max_img_w,
             num_channels=1,
             patch_size=16,
+            hidden_dropout_prob=0.2,
         )
         decoder_config = TrOCRConfig(
-            d_model=100,
-            decoder_ffn_dim=200,
+            d_model=50,
+            decoder_ffn_dim=100,
             decoder_layers=1,
             decoder_attention_heads=10,
             max_position_embeddings=512,
@@ -50,6 +51,8 @@ class TrOCR(HMERModel):
             bos_token_id=dataset.label2id['<sos>'],
             eos_token_id=dataset.label2id['<eos>'],
             pad_token_id=dataset.label2id['<pad>'],
+            dropout=0.2,
+            use_cache=False,  # to use less memory
         )
         self.encoder = ViTModel(encoder_config)
         self.encoder.embeddings = CustomViTEmbeddings(encoder_config)
