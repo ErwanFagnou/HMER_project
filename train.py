@@ -22,7 +22,7 @@ class HMERModel(pl.LightningModule, ABC):
             pred = self(inputs, outputs)
             pred_flat = pred.view(-1, pred.shape[-1])
             outputs_flat = outputs.view(-1)
-            loss = config.loss_fn(pred_flat, outputs_flat) / inputs.shape[0]
+            loss = config.loss_fn(pred_flat, outputs_flat)# / inputs.shape[0]
         else:
             loss = 0
             for sample_input, sample_output in zip(inputs, outputs):
