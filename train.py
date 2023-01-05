@@ -13,7 +13,7 @@ class HMERModel(pl.LightningModule, ABC):
     def configure_optimizers(self):
         return config.optimizer(self.parameters(), **config.opt_kwargs)
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx, log=True):
         inputs, outputs = batch
 
         if isinstance(inputs, torch.Tensor):
@@ -35,14 +35,19 @@ class HMERModel(pl.LightningModule, ABC):
                 loss += config.loss_fn(pred_flat, outputs_flat)
             loss /= len(inputs)
 
-        self.log('train_loss', loss)
+        if log:
+            self.log('train_loss', loss, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        return self.training_step(batch, batch_idx)
+        loss = self.training_step(batch, batch_idx, log=False)
+        self.log('val_loss', loss, prog_bar=True, on_epoch=True)
+        return loss
 
     def test_step(self, batch, batch_idx):
-        return self.training_step(batch, batch_idx)
+        loss = self.training_step(batch, batch_idx, log=False)
+        self.log('test_loss', loss, prog_bar=True, on_epoch=True)
+        return loss
 
     # def train_dataloader(self):
     #     pass
