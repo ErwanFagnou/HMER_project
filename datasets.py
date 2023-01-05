@@ -98,6 +98,10 @@ def multilength_collate_fn(batch):
 def get_padding_collate_fn(label2id, max_img_h, max_img_w, max_label_len):
     pad_id = label2id['<pad>']
     def padding_collate_fn(batch):
+        max_img_w = max([item[0].shape[1] for item in batch])
+        max_img_h = max([item[0].shape[0] for item in batch])
+        max_label_len = max([len(item[1]) for item in batch])
+
         images = torch.stack([preprocess_image(item[0], max_img_w, max_img_h) for item in batch])
         labels = torch.stack([torch.cat((item[1], torch.tensor([pad_id]*(max_label_len-len(item[1])), dtype=item[1].dtype))) for item in batch])
         return images, labels
