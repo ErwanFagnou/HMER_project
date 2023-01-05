@@ -32,14 +32,24 @@ class CustomViTEmbeddings(nn.Module):
 
         self.position_embeddings = nn.Parameter(
             nn.init.trunc_normal_(
-                torch.zeros(1, config.max_image_height // config.patch_size,
-                            config.max_image_width // config.patch_size, config.hidden_size, dtype=torch.float32),
+                torch.zeros(1, math.ceil(config.max_image_height / config.patch_size),
+                            math.ceil(config.max_image_width / config.patch_size), config.hidden_size, dtype=torch.float32),
                 mean=0.0,
                 std=config.initializer_range,
             )
         )
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.config = config
+
+    def maybe_pad(self, pixel_values, height, width):
+        pad_h, pad_w = self.patch_embeddings.patch_size
+        if width % pad_w != 0:
+            pad_values = (0, pad_w - width % pad_w)
+            pixel_values = nn.functional.pad(pixel_values, pad_values)
+        if height % pad_h != 0:
+            pad_values = (0, 0, 0, pad_h - height % pad_h)
+            pixel_values = nn.functional.pad(pixel_values, pad_values)
+        return pixel_values
 
     def forward(
         self,
@@ -48,6 +58,9 @@ class CustomViTEmbeddings(nn.Module):
         **_,
     ) -> torch.Tensor:
         batch_size, num_channels, height, width = pixel_values.shape
+
+        # pad the input to be divisible by self.patch_size, if needed
+        pixel_values = self.maybe_pad(pixel_values, height, width)
         embeddings = self.patch_embeddings(pixel_values)
 
         if bool_masked_pos is not None:
@@ -57,15 +70,13 @@ class CustomViTEmbeddings(nn.Module):
             mask = bool_masked_pos.unsqueeze(-1).type_as(mask_tokens)
             embeddings = embeddings * (1.0 - mask) + mask_tokens * mask
 
-        used_patches_mask = (embeddings != self.patch_embeddings.projection.bias).any(dim=2).any(dim=0)
 
         # add positional encoding to each token
-        patch_rows = height // self.config.patch_size
-        patch_cols = width // self.config.patch_size
+        patch_rows = math.ceil(height / self.config.patch_size)
+        patch_cols = math.ceil(width / self.config.patch_size)
         position_embeddings = self.position_embeddings[:, :patch_rows, :patch_cols, :].flatten(1, 2)
-        # print("before", embeddings.shape, position_embeddings.shape, used_patches_mask.shape)
+        used_patches_mask = (embeddings != self.patch_embeddings.projection.bias).any(dim=2).any(dim=0)
         embeddings = (embeddings + position_embeddings)[:, used_patches_mask]
-        # print("after", embeddings.shape)
 
         # (this was previously before adding the positional embeddings, which is stupid)
         # add the [CLS] token to the embedded patch tokens
@@ -90,7 +101,7 @@ class CustomViTPatchEmbeddings(nn.Module):
         num_channels, hidden_size = config.num_channels, config.hidden_size
 
         patch_size = patch_size if isinstance(patch_size, collections.abc.Iterable) else (patch_size, patch_size)
-        num_patches = (max_h / patch_size[1]) * (max_w / patch_size[0])
+        num_patches = math.ceil(max_h / patch_size[1]) * math.ceil(max_w / patch_size[0])
         self.image_size = (max_h, max_w)
         self.patch_size = patch_size
         self.num_channels = num_channels
