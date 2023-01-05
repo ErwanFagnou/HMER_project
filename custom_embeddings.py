@@ -57,11 +57,15 @@ class CustomViTEmbeddings(nn.Module):
             mask = bool_masked_pos.unsqueeze(-1).type_as(mask_tokens)
             embeddings = embeddings * (1.0 - mask) + mask_tokens * mask
 
+        used_patches_mask = (embeddings != self.patch_embeddings.projection.bias).any(dim=2).any(dim=0)
+
         # add positional encoding to each token
         patch_rows = height // self.config.patch_size
         patch_cols = width // self.config.patch_size
         position_embeddings = self.position_embeddings[:, :patch_rows, :patch_cols, :].flatten(1, 2)
-        embeddings = embeddings + position_embeddings
+        # print("before", embeddings.shape, position_embeddings.shape, used_patches_mask.shape)
+        embeddings = (embeddings + position_embeddings)[:, used_patches_mask]
+        # print("after", embeddings.shape)
 
         # (this was previously before adding the positional embeddings, which is stupid)
         # add the [CLS] token to the embedded patch tokens
