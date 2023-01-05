@@ -1,11 +1,16 @@
 import torch.optim.optimizer
 from torch import nn
 
+# Reload
+reload_from_checkpoint = False
+checkpoint_path = "lightning_logs/version_36/checkpoints/epoch=28-step=4031.ckpt"
+
 # Dataset parameters
 downscale = 1
 additional_tokens = {"<pad>": 0, "<sos>": 1, "<eos>": 2}
 precompute_padding = False
 batch_padding = True
+include_sos_and_eos = False  # taken care of by transformer
 
 # Training parameters
 epochs = 100
