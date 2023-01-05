@@ -185,12 +185,13 @@ class DatasetManager:
         return train_dataset, test_datasets
 
     def make_loaders(self, train_dataset, test_datasets, batch_size, batch_padding=False):
+        all_img_shapes = [img.shape for img, _ in
+                          itertools.chain(train_dataset.values(), *[d.values() for d in test_datasets.values()])]
+        self.max_img_h = max([s[0] for s in all_img_shapes])
+        self.max_img_w = max([s[1] for s in all_img_shapes])
+        self.max_label_len = max([len(labels) for _, labels in train_dataset.values()]) + 2
+
         if batch_padding:
-            all_img_shapes = [img.shape for img, _ in
-                              itertools.chain(train_dataset.values(), *[d.values() for d in test_datasets.values()])]
-            self.max_img_h = max([s[0] for s in all_img_shapes])
-            self.max_img_w = max([s[1] for s in all_img_shapes])
-            self.max_label_len = max([len(labels) for _, labels in train_dataset.values()]) + 2
             collate_fn = get_padding_collate_fn(self.label2id, self.max_img_h, self.max_img_w, self.max_label_len)
         else:
             collate_fn = multilength_collate_fn
