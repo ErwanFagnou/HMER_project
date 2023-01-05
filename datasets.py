@@ -60,9 +60,10 @@ def preprocess_image(img, max_width, max_height, downscale=1):
     return img
 
 
-def preprocess_labels(labels, label2id, max_len=None):
+def preprocess_labels(labels, label2id, max_len=None, include_sos_and_eos=False):
     """ Label preprocessing: tokenize and pad """
-    labels = ["<sos>"] + labels + ["<eos>"]
+    if include_sos_and_eos:
+        labels = ["<sos>"] + labels + ["<eos>"]
     if max_len is not None:
         labels = labels[:max_len] + ["<pad>"] * (max_len - len(labels))
     return torch.Tensor([label2id[label] for label in labels])
@@ -109,7 +110,7 @@ def get_padding_collate_fn(label2id, max_img_h, max_img_w, max_label_len):
 
 
 class DatasetManager:
-    def __init__(self, data_files: DatasetFiles, batch_size, precompute_padding=False, batch_padding=False, downscale=1, verbose=True):
+    def __init__(self, data_files: DatasetFiles, batch_size, precompute_padding=False, batch_padding=False, downscale=1, include_sos_and_eos=False, verbose=True):
         assert not (precompute_padding and batch_padding), "Only one of precompute_padding and batch_padding can be True"
 
         self.data_files = data_files
@@ -123,6 +124,8 @@ class DatasetManager:
         suffix = '_padded' if precompute_padding else ''
         if downscale > 1:
             suffix += '_downscale=' + str(downscale)
+        if include_sos_and_eos:
+            suffix += '_sos_and_eos'
         file_path = os.path.join('./data/datasets/', data_files.name + suffix + '.pkl.bz2')
 
         if os.path.exists(file_path):
@@ -136,7 +139,7 @@ class DatasetManager:
             if verbose:
                 print(f'First time loading and preprocessing the dataset...')
             self.label2id = self.load_dictionary()
-            train_dataset, test_datasets = self.get_datasets(precompute_padding, downscale)
+            train_dataset, test_datasets = self.get_datasets(precompute_padding, downscale, include_sos_and_eos)
 
             # save the datasets to file
             if precompute_padding:
@@ -161,7 +164,7 @@ class DatasetManager:
         label2id.update({label: i + offset for i, label in enumerate(dictionary)})
         return label2id
 
-    def get_datasets(self, precompute_padding=False, downscale=1):
+    def get_datasets(self, precompute_padding=False, downscale=1, include_sos_and_eos=False):
         # load the raw data from files
         train_datasets = read_datasets(self.data_files.train)
         train_dataset = merge_datasets(train_datasets)
@@ -178,12 +181,12 @@ class DatasetManager:
             max_img_h = max_img_w = max_label_len = None
 
         train_dataset = {
-            name: (preprocess_image(img, max_img_w, max_img_h, downscale), preprocess_labels(labels, self.label2id, max_label_len))
+            name: (preprocess_image(img, max_img_w, max_img_h, downscale), preprocess_labels(labels, self.label2id, max_label_len, include_sos_and_eos))
             for name, (img, labels) in train_dataset.items()}
         for name, dataset in test_datasets.items():
             max_label_len = max([len(labels) for _, labels in dataset.values()]) + 2
             test_datasets[name] = {
-                name: (preprocess_image(img, max_img_w, max_img_h, downscale), preprocess_labels(labels, self.label2id, max_label_len))
+                name: (preprocess_image(img, max_img_w, max_img_h, downscale), preprocess_labels(labels, self.label2id, max_label_len, include_sos_and_eos))
                 for name, (img, labels) in dataset.items()}
 
         return train_dataset, test_datasets
