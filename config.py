@@ -11,7 +11,7 @@ batch_padding = False
 epochs = 100
 batch_size = 32
 optimizer = torch.optim.Adam
-opt_kwargs = dict(lr=1e-3)
+opt_kwargs = dict(lr=2e-3)
 
 # loss_fn = nn.CrossEntropyLoss(reduction='sum', ignore_index=additional_tokens['<pad>'])
 loss_fn = lambda loss, _: loss
