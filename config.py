@@ -23,4 +23,6 @@ opt_kwargs = dict(lr=1e-3)
 # loss_fn = nn.CrossEntropyLoss(reduction='sum', ignore_index=additional_tokens['<pad>'])
 loss_fn = lambda loss, _: loss
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+use_gpu = torch.cuda.is_available()
+device = torch.device('cuda' if use_gpu else 'cpu')
+trainer_accelerator = 'gpu' if use_gpu else 'cpu'
