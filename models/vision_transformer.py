@@ -32,7 +32,7 @@ class TrOCR(HMERModel):
             hidden_size=100,
             intermediate_size=400,
             num_hidden_layers=3,
-            num_attention_heads=20,
+            num_attention_heads=10,
             max_image_height=dataset.max_img_h,
             max_image_width=dataset.max_img_w,
             num_channels=1,
@@ -65,6 +65,7 @@ class TrOCR(HMERModel):
         self.result = None
 
     def forward(self, pixel_values, true_out):
+        # print(pixel_values.shape)
         # remove <sos> and <eos> tokens
         if true_out[0, 0] == self.decoder.config.bos_token_id and true_out[0, 1] == self.decoder.config.eos_token_id:
             true_out = true_out[:, 1:-1]
