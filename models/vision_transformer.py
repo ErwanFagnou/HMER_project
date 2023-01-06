@@ -40,8 +40,8 @@ class TrOCR(HMERModel):
             hidden_dropout_prob=0.2,
         )
         decoder_config = TrOCRConfig(
-            d_model=50,
-            decoder_ffn_dim=100,
+            d_model=25,
+            decoder_ffn_dim=50,
             decoder_layers=1,
             decoder_attention_heads=10,
             max_position_embeddings=512,
