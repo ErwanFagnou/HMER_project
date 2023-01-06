@@ -6,7 +6,7 @@ reload_from_checkpoint = False
 checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt"
 
 # Model
-name = "CNN"
+name = "CNN_DecodeDim=50_GaborProjPosEmbs"
 use_gabor_position_embeddings = True
 project_position_embeddings = True
 
@@ -37,7 +37,9 @@ trainer_accelerator = 'gpu' if use_gpu else 'cpu'
 
 config_dict = dict(
     reload_from_checkpoint=reload_from_checkpoint,
+    checkpoint_path=checkpoint_path,
     use_gabor_position_embeddings=use_gabor_position_embeddings,
+    project_position_embeddings=project_position_embeddings,
     downscale=downscale,
     additional_tokens=additional_tokens,
     precompute_padding=precompute_padding,
@@ -51,5 +53,3 @@ config_dict = dict(
     opt_kwargs=opt_kwargs,
     **opt_kwargs,
 )
-if reload_from_checkpoint:
-    config_dict['checkpoint_path'] = checkpoint_path
