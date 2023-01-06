@@ -1,9 +1,11 @@
+import math
+
 import torch
 from torch import nn
 from transformers import VisionEncoderDecoderModel, ViTModel, TrOCRForCausalLM, ViTConfig, TrOCRConfig
 from transformers.utils import ModelOutput
 
-from custom_embeddings import CustomViTEmbeddings
+from custom_embeddings import CustomViTEmbeddings, GaborPositionEmbeddings
 from datasets import DatasetManager
 from train import HMERModel
 import config
@@ -47,11 +49,12 @@ def get_CNN_encoder(dataset: DatasetManager):
 
     class CNNEncoder(nn.Module):
         output_size = 64
-        num_channels = [1, 16, 32, 48, 64]
+        num_channels = [1, 16, 32, 48, output_size]
         kernel_sizes = [3, 3, 3, 3]
         cnn_activation_cls = nn.ELU
         fc_activation_cls = nn.ELU
         dropout_rate = 0.2
+        use_gabor_position_embeddings = config.use_gabor_position_embeddings
 
         config = ViTConfig(
             hidden_size=output_size,
@@ -72,6 +75,14 @@ def get_CNN_encoder(dataset: DatasetManager):
 
             self.dropout = nn.Dropout(self.dropout_rate)
 
+            grid_rows = math.ceil(dataset.max_img_h / (2 ** len(self.kernel_sizes)))
+            grid_cols = math.ceil(dataset.max_img_w / (2 ** len(self.kernel_sizes)))
+            if self.use_gabor_position_embeddings:
+                self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, self.output_size,
+                                                              projection=config.project_position_embeddings)
+            else:
+                self.pos_embeddings = nn.Parameter(torch.randn(1, grid_rows, grid_cols, self.output_size))
+
             # layer norm?
             # self.layer_norm = nn.LayerNorm(self.output_size)
 
@@ -81,12 +92,26 @@ def get_CNN_encoder(dataset: DatasetManager):
         def get_output_embeddings(self):
             return None
 
+        def get_position_embeddings(self):
+            if self.use_gabor_position_embeddings:
+                return self.pos_embeddings()
+            else:
+                return self.pos_embeddings
+
         def forward(self, pixel_values: torch.Tensor, **_):
             x = self.cnn(pixel_values)
-            x = self.dropout(x)
             # shape: (batch_size, channels, height, width)
 
-            x = x.flatten(2).transpose(1, 2)
+            x = x.permute(0, 2, 3, 1)
+            # shape: (batch_size, height,  width, channels)
+
+            # add position embeddings
+            x = x + self.get_position_embeddings()[:, :x.shape[1], :x.shape[2]]
+
+            # dropout
+            x = self.dropout(x)
+
+            x = x.flatten(start_dim=1, end_dim=2)
             # shape: (batch_size, height * width, channels)
 
             # x = self.fc1(x)

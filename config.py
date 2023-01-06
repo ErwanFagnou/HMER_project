@@ -8,6 +8,7 @@ checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt
 # Model
 name = "CNN"
 use_gabor_position_embeddings = True
+project_position_embeddings = True
 
 # Dataset parameters
 downscale = 2
