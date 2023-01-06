@@ -163,7 +163,7 @@ class GaborPositionEmbeddings(nn.Module):
         self.exp_x2 = torch.exp(-self.x**2)
         self.exp_y2 = torch.exp(-self.y**2)
 
-        self.projection_layer = nn.Linear(embedding_dim, embedding_dim, bias=False) if projection else None
+        self.projection_layer = nn.Linear(embedding_dim, embedding_dim, bias=True) if projection else None
 
     def forward(self) -> torch.Tensor:
         device = self.gabor_x.device
@@ -186,6 +186,9 @@ class GaborPositionEmbeddings(nn.Module):
         position_embeddings[-1, :] += self.edge_weights[1]
         position_embeddings[:, 0] += self.edge_weights[2]
         position_embeddings[:, -1] += self.edge_weights[3]
+
+        if self.projection:
+            position_embeddings = self.projection_layer(position_embeddings)
 
         position_embeddings = position_embeddings.unsqueeze(0)
         return position_embeddings
