@@ -21,7 +21,7 @@ if __name__ == '__main__':
 
     model = TrOCR(crohme).to(config.device)
 
-    wandb_logger = WandbLogger(project="HMER", entity="efagnou", name="CNN_model")
+    wandb_logger = WandbLogger(project="HMER", entity="efagnou", name=config.name)
     wandb_logger.log_hyperparams(config.config_dict)
 
     checkpoint_callback = ModelCheckpoint(
