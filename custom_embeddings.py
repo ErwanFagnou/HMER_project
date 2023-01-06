@@ -30,14 +30,21 @@ class CustomViTEmbeddings(nn.Module):
         # num_channels, hidden_size, patch_size = config.num_channels, config.hidden_size, config.patch_size
         # self.projection = nn.Conv2d(num_channels, hidden_size, kernel_size=patch_size, stride=patch_size)
 
-        self.position_embeddings = nn.Parameter(
-            nn.init.trunc_normal_(
-                torch.zeros(1, math.ceil(config.max_image_height / config.patch_size),
-                            math.ceil(config.max_image_width / config.patch_size), config.hidden_size, dtype=torch.float32),
-                mean=0.0,
-                std=config.initializer_range,
+        grid_rows = math.ceil(config.max_image_height / config.patch_size)
+        grid_cols = math.ceil(config.max_image_width / config.patch_size)
+        self.use_gabor_position_embeddings = config.use_gabor_position_embeddings
+        if self.use_gabor_position_embeddings:
+            self.position_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, config.hidden_size)
+        else:
+            self.position_embeddings = nn.Parameter(
+                nn.init.trunc_normal_(
+                    torch.zeros(1, math.ceil(config.max_image_height / config.patch_size),
+                                math.ceil(config.max_image_width / config.patch_size), config.hidden_size, dtype=torch.float32),
+                    mean=0.0,
+                    std=config.initializer_range,
+                )
             )
-        )
+
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.config = config
 
@@ -50,6 +57,11 @@ class CustomViTEmbeddings(nn.Module):
             pad_values = (0, 0, 0, pad_h - height % pad_h)
             pixel_values = nn.functional.pad(pixel_values, pad_values)
         return pixel_values
+
+    def get_position_embeddings(self):
+        if self.use_gabor_position_embeddings:
+            return self.position_embeddings()
+        return self.position_embeddings
 
     def forward(
         self,
@@ -74,7 +86,7 @@ class CustomViTEmbeddings(nn.Module):
         # add positional encoding to each token
         patch_rows = math.ceil(height / self.config.patch_size)
         patch_cols = math.ceil(width / self.config.patch_size)
-        position_embeddings = self.position_embeddings[:, :patch_rows, :patch_cols, :].flatten(1, 2)
+        position_embeddings = self.get_position_embeddings()[:, :patch_rows, :patch_cols, :].flatten(1, 2)
         used_patches_mask = (embeddings != self.patch_embeddings.projection.bias).any(dim=2).any(dim=0)
         embeddings = (embeddings + position_embeddings)[:, used_patches_mask]
 
@@ -119,14 +131,71 @@ class CustomViTPatchEmbeddings(nn.Module):
         return embeddings
 
 
-if __name__ == '__main__':
-    position_embeddings = nn.Parameter(
-        nn.init.trunc_normal_(
-            torch.zeros(1, 1080, 1920, 100, dtype=torch.float32),
-            mean=0.0,
-            std=0.2,
-        )
-    )
+class GaborPositionEmbeddings(nn.Module):
+    initializer_std = 0.2
 
+    def __init__(self, grid_height, grid_width, embedding_dim):
+        super().__init__()
+        self.grid_height = grid_height
+        self.grid_width = grid_width
+        self.embedding_dim = embedding_dim
+
+        # power (1/sigma), freq (1/lambda), phase (psi), weight (w)
+        init_mean = torch.tensor([2, 5 * (2*torch.pi), 0, 0], dtype=torch.float32).view(4, 1, 1)
+        init_radius = torch.tensor([2, 5 * (2*torch.pi), torch.pi, 1], dtype=torch.float32).view(4, 1, 1)
+        self.gabor_x = nn.Parameter(
+            nn.init.uniform_(torch.empty(4, 1, embedding_dim, dtype=torch.float32), -1, 1)
+            * init_mean + init_radius
+        )
+        self.gabor_y = nn.Parameter(
+            nn.init.uniform_(torch.empty(4, 1, embedding_dim, dtype=torch.float32), -1, 1)
+            * init_mean + init_radius
+        )
+        # self.edge_weights = nn.Parameter(torch.nn(embedding_dim, 4, 1))  # 4 edges of the grid
+        self.edge_weights = nn.Parameter(
+            nn.init.uniform_(torch.empty(4, embedding_dim, dtype=torch.float32), -1, 1)
+        )  # 4 edges of the grid
+
+        # precompute some values
+        self.x = torch.linspace(0, 1, grid_width).unsqueeze(1)  # from 0 to 1 for numerical stability, rescaled later
+        self.y = torch.linspace(0, 1, grid_height).unsqueeze(1)
+        self.exp_x2 = torch.exp(-self.x**2)
+        self.exp_y2 = torch.exp(-self.y**2)
+
+    def forward(self) -> torch.Tensor:
+        device = self.gabor_x.device
+        if self.x.device != device:
+            self.x = self.x.to(self.gabor_x.device)
+            self.y = self.y.to(self.gabor_x.device)
+            self.exp_x2 = self.exp_x2.to(self.gabor_x.device)
+            self.exp_y2 = self.exp_y2.to(self.gabor_x.device)
+
+        gabor_x = self.exp_x2 ** self.gabor_x[0] \
+                  * torch.cos(self.gabor_x[1] * self.x + self.gabor_x[2]) \
+                  * self.gabor_x[3]
+        gabor_y = self.exp_y2 ** self.gabor_y[0] \
+                    * torch.cos(self.gabor_y[1] * self.y + self.gabor_y[2]) \
+                    * self.gabor_y[3]
+
+        position_embeddings = gabor_x.unsqueeze(0) + gabor_y.unsqueeze(1)
+
+        position_embeddings[0, :] += self.edge_weights[0]
+        position_embeddings[-1, :] += self.edge_weights[1]
+        position_embeddings[:, 0] += self.edge_weights[2]
+        position_embeddings[:, -1] += self.edge_weights[3]
+
+        position_embeddings = position_embeddings.unsqueeze(0)
+        return position_embeddings
+
+
+if __name__ == '__main__':
+    pe = GaborPositionEmbeddings(16, 16, 512)
+    position_embeddings = pe()
+
+    print(position_embeddings)
     print(position_embeddings.shape)
-    print(position_embeddings.flatten(1, 2).shape)
+
+    import matplotlib.pyplot as plt
+    for i in range(position_embeddings.shape[3]):
+        plt.imshow(position_embeddings[0, :, :, i].detach().numpy())
+        plt.show()
