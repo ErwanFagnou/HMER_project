@@ -128,8 +128,8 @@ def get_CNN_encoder(dataset: DatasetManager):
 
 def get_decoder(dataset: DatasetManager):
     decoder_config = TrOCRConfig(
-        d_model=50,
-        decoder_ffn_dim=50,
+        d_model=75,
+        decoder_ffn_dim=75,
         decoder_layers=1,
         decoder_attention_heads=5,
         max_position_embeddings=512,

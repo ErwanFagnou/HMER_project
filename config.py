@@ -6,8 +6,8 @@ reload_from_checkpoint = False
 checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt"
 
 # Model
-name = "CNN_DecodeDim=50_GaborProjPosEmbs"
-use_gabor_position_embeddings = True
+name = "CNN_DecodeDim=75_PosEmbs"
+use_gabor_position_embeddings = False
 project_position_embeddings = True
 
 # Dataset parameters
