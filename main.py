@@ -1,5 +1,7 @@
 import pytorch_lightning as pl
 import torch
+from pytorch_lightning.callbacks import ModelCheckpoint
+from pytorch_lightning.loggers import WandbLogger
 
 import config
 import datasets
@@ -19,28 +21,19 @@ if __name__ == '__main__':
 
     model = TrOCR(crohme).to(config.device)
 
-    # imgs, true_labels = next(iter(crohme.train_loader))
-    # imgs = imgs[:1].to(config.device)
-    # true_labels = true_labels[:1].type(torch.LongTensor).to(config.device)
-    # print(imgs.shape, true_labels.shape)
-    # model(imgs, true_labels)
+    wandb_logger = WandbLogger(project="HMER", entity="efagnou", name="CNN_model")
+    wandb_logger.log_hyperparams(config.config_dict)
 
-    # img = crohme.train_loader.dataset[0][0].unsqueeze(0).to(config.device)
-    # # img = torch.randn(1, 224, 224)
-    # true_labels = crohme.train_loader.dataset[0][1].unsqueeze(0).type(torch.LongTensor).to(config.device)
-    # print(img.shape, true_labels.shape)
-    # model(img, true_labels)
-
-    # result = model.result
-    # print(result.logits.shape)
-    # print(config.loss_fn(result, true_labels))
-
-    # print(crohme.test_loaders)
+    checkpoint_callback = ModelCheckpoint(
+        monitor="val_loss",
+    )
 
     trainer_kwargs = {}
     if config.reload_from_checkpoint:
         trainer_kwargs['resume_from_checkpoint'] = config.checkpoint_path
     trainer = pl.Trainer(
+        logger=wandb_logger,
+        callbacks=[checkpoint_callback],
         accelerator=config.trainer_accelerator,
         devices=1,
         max_epochs=config.epochs,
