@@ -10,12 +10,15 @@ if __name__ == '__main__':
     print(crohme.max_img_h, crohme.max_img_w, crohme.max_label_len)
 
     # model = TrOCR(crohme).to(config.device)
-    model = TrOCR.load_from_checkpoint("lightning_logs/version_37/checkpoints/epoch=34-step=4865.ckpt", dataset=crohme).to(config.device)
+    model = TrOCR.load_from_checkpoint("lightning_logs/version_55/checkpoints/epoch=79-step=11120.ckpt", dataset=crohme).to(config.device)
     model.eval()
 
     import matplotlib.pyplot as plt
 
-    print(model.encoder.embeddings.patch_embeddings.projection.bias)
+    print("Train size:", len(crohme.train_loader.dataset))
+    print("Test size 2014:", len(crohme.test_loaders['TEST14'].dataset))
+    print("Test size 2016:", len(crohme.test_loaders['TEST16'].dataset))
+    print("Test size 2019:", len(crohme.test_loaders['TEST19'].dataset))
 
     loader = crohme.train_loader
     # loader = crohme.test_loaders["TEST14"]

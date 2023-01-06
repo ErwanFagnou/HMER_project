@@ -21,7 +21,7 @@ effective_batch_size = 64
 batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
-opt_kwargs = dict(lr=1e-2)
+opt_kwargs = dict(lr=1e-3)
 
 # loss_fn = nn.CrossEntropyLoss(reduction='sum', ignore_index=additional_tokens['<pad>'])
 loss_fn = lambda loss, _: loss
