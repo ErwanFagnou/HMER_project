@@ -72,7 +72,8 @@ def get_CNN_encoder(dataset: DatasetManager):
 
             self.dropout = nn.Dropout(self.dropout_rate)
 
-            # TODO: layer norm?
+            # layer norm?
+            # self.layer_norm = nn.LayerNorm(self.output_size)
 
             # self.fc1 = nn.Linear(self.num_channels[-1], self.output_size)
             # self.fc2 = nn.Linear(self.output_size, self.output_size)
@@ -93,6 +94,8 @@ def get_CNN_encoder(dataset: DatasetManager):
             # x = self.fc2(x)
             # x = self.fc_activation(x)
 
+            # x = self.layer_norm(x)
+
             return ModelOutput(last_hidden_state=x, hidden_states=None, attentions=None)
 
     return CNNEncoder()
@@ -100,7 +103,7 @@ def get_CNN_encoder(dataset: DatasetManager):
 
 def get_decoder(dataset: DatasetManager):
     decoder_config = TrOCRConfig(
-        d_model=25,
+        d_model=50,
         decoder_ffn_dim=50,
         decoder_layers=1,
         decoder_attention_heads=5,
@@ -113,6 +116,7 @@ def get_decoder(dataset: DatasetManager):
         pad_token_id=dataset.label2id['<pad>'],
         dropout=0.2,
         use_cache=False,  # to use less memory
+        # layernorm_embedding=False,
     )
     decoder = TrOCRForCausalLM(decoder_config)
 
