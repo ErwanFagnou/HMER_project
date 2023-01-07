@@ -198,7 +198,8 @@ class DatasetManager:
                           itertools.chain(train_dataset.values(), *[d.values() for d in test_datasets.values()])]
         self.max_img_h = max([s[0] for s in all_img_shapes])
         self.max_img_w = max([s[1] for s in all_img_shapes])
-        self.max_label_len = max([len(labels) for _, labels in train_dataset.values()]) + 2
+        self.max_label_len = max([len(labels) for _, labels in
+                                  itertools.chain(train_dataset.values(), *[d.values() for d in test_datasets.values()])]) + 2
 
         if batch_padding:
             collate_fn = get_padding_collate_fn(self.label2id, self.max_img_h, self.max_img_w, self.max_label_len)
