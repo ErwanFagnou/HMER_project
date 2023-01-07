@@ -192,6 +192,8 @@ class CustomDecoder(nn.Module):
         self.fc2 = nn.Linear(self.hidden_state_dim, len(dataset.label2id))
         self.activation = nn.ELU()
 
+        self.layernorm = nn.LayerNorm(self.hidden_state_dim)
+
     def recursive_forward(self, prev_hidden_states, encoder_output):
         # get last hidden state
         hidden_state = prev_hidden_states[:, -1:, :]
@@ -208,6 +210,8 @@ class CustomDecoder(nn.Module):
         # use the query on the image
         next_hidden_state = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]
         # shape: (batch_size, hidden_state_dim)
+
+        next_hidden_state = self.layernorm(next_hidden_state)
         return next_hidden_state
 
     def forward(self, inputs_embeds, sequence_length, stop_at_id=None):
