@@ -24,8 +24,15 @@ if __name__ == '__main__':
     wandb_logger = WandbLogger(project="HMER", entity="efagnou", name=config.name)
     wandb_logger.log_hyperparams(config.config_dict)
 
-    checkpoint_callback = ModelCheckpoint(
+    save_dir = f"checkpoints/{config.name}-{wandb_logger.version}"
+    val_checkpoint_callback = ModelCheckpoint(
+        dirpath=save_dir,
         monitor="val_loss",
+        filename="epoch={epoch:02d}-step={step:05d}-val_loss={val_loss:.4f}",
+    )
+    last_checkpoint_callback = ModelCheckpoint(
+        dirpath=save_dir,
+        filename="epoch={epoch:02d}-step={step:05d}-last",
     )
 
     trainer_kwargs = {}
@@ -33,7 +40,7 @@ if __name__ == '__main__':
         trainer_kwargs['resume_from_checkpoint'] = config.checkpoint_path
     trainer = pl.Trainer(
         logger=wandb_logger,
-        callbacks=[checkpoint_callback],
+        callbacks=[val_checkpoint_callback, last_checkpoint_callback],
         accelerator=config.trainer_accelerator,
         devices=1,
         max_epochs=config.epochs,
