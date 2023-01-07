@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 import config
 import datasets
-from models.vision_transformer import TrOCR
+from models.vision_transformer import TrOCR, CustomEncoderDecoder
 
 
 def show_generate(model, loader):
@@ -46,12 +46,13 @@ if __name__ == '__main__':
     # model = TrOCR(crohme).to(config.device)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V1-3jxjprsy/epoch=epoch=414-step=step=57685-val_loss=val_loss=0.1211.ckpt", dataset=crohme).to(config.device)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V2-pcfs4qv7/epoch=499-step=69500-last.ckpt", dataset=crohme).to(config.device)
-    model = TrOCR.load_from_checkpoint("checkpoints/CNN_V3-bm63svkd/epoch=499-step=69500-last.ckpt", dataset=crohme).to(config.device)
+    # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V3-bm63svkd/epoch=499-step=69500-last.ckpt", dataset=crohme).to(config.device)
+    model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/Model_V4-3khbx46l/epoch=54-step=07645-last.ckpt", dataset=crohme).to(config.device)
 
     model.eval()
 
-    # loader = crohme.train_loader
-    loader = crohme.test_loaders["TEST14"]
+    loader = crohme.train_loader
+    # loader = crohme.test_loaders["TEST14"]
     show_generate(model, loader)
 
     # show_pos_embeddings(model)

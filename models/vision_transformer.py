@@ -210,15 +210,17 @@ class CustomDecoder(nn.Module):
         # shape: (batch_size, hidden_state_dim)
         return next_hidden_state
 
-    def forward(self, input_ids, inputs_embeds):
+    def forward(self, inputs_embeds, sequence_length, stop_at_id=None):
         # inputs: (batch_size, seq_len)
         # inputs_embeds: (batch_size, height * width, d_model)
-        batch_size = input_ids.shape[0]
+        batch_size = inputs_embeds.shape[0]
 
         hidden_states = self.initial_hidden_state.repeat(batch_size, 1).unsqueeze(1)
-        for t in range(input_ids.shape[1]):
+        for t in range(sequence_length):
             next_hidden_state = self.recursive_forward(hidden_states, inputs_embeds)
             hidden_states = torch.cat([hidden_states, next_hidden_state.unsqueeze(1)], dim=1)
+            if stop_at_id is not None and (hidden_states[:, -1] == stop_at_id).all():
+                break
 
         x = self.fc1(hidden_states[:, 1:])
         x = self.activation(x)
@@ -279,13 +281,15 @@ class CustomEncoderDecoder(HMERModel):
         self.decoder = CustomDecoder(dataset)
 
         self.vocab_size = len(dataset.label2id)
+        self.eos_token_id = dataset.label2id['<eos>']
         self.result = None
 
-    def forward(self, pixel_values, labels):
+    def forward(self, pixel_values, labels=None, sequence_length=0):
+        sequence_length = labels.shape[1] if labels is not None else sequence_length
         x = pixel_values.unsqueeze(1)  # add channel dim
 
         encoder_outputs = self.encoder(x)
-        decoder_outputs = self.decoder(labels, encoder_outputs.last_hidden_state)
+        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, sequence_length)
 
         loss_fct = CrossEntropyLoss()
         loss = loss_fct(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
@@ -296,3 +300,12 @@ class CustomEncoderDecoder(HMERModel):
         )
 
         return loss
+
+    @torch.no_grad()
+    def generate(self, pixel_values, max_length=50):
+        x = pixel_values.unsqueeze(1)  # add channel dim
+
+        encoder_outputs = self.encoder(x)
+        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, max_length, stop_at_id=self.eos_token_id)
+        logits = decoder_outputs.logits
+        return logits.argmax(dim=-1)
