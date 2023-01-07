@@ -6,7 +6,7 @@ reload_from_checkpoint = False
 checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt"
 
 # Model
-name = "CNN_DecodeDim=75_PosEmbs"
+name = "CNN_V1"
 use_gabor_position_embeddings = False
 project_position_embeddings = True
 
@@ -29,7 +29,6 @@ opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)
 # opt_kwargs = dict(lr=1e-2, momentum=0.9, weight_decay=0)
 
 # loss_fn = nn.CrossEntropyLoss(reduction='sum', ignore_index=additional_tokens['<pad>'])
-loss_fn = lambda loss, _: loss
 
 use_gpu = torch.cuda.is_available()
 device = torch.device('cuda' if use_gpu else 'cpu')
