@@ -134,16 +134,17 @@ class CustomViTPatchEmbeddings(nn.Module):
 class GaborPositionEmbeddings(nn.Module):
     initializer_std = 0.2
 
-    def __init__(self, grid_height, grid_width, embedding_dim, projection=False):
+    def __init__(self, grid_height, grid_width, embedding_dim, projection=False, projection_size=None):
         super().__init__()
         self.grid_height = grid_height
         self.grid_width = grid_width
         self.embedding_dim = embedding_dim
         self.projection = projection
+        self.projection_size = projection_size if projection_size is not None else embedding_dim
 
         # power (1/sigma), freq (1/lambda), phase (psi), weight (w)
-        init_mean = torch.tensor([2, 5 * (2*torch.pi), 0, 0], dtype=torch.float32).view(4, 1, 1)
-        init_radius = torch.tensor([2, 5 * (2*torch.pi), torch.pi, 1], dtype=torch.float32).view(4, 1, 1)
+        init_mean = torch.tensor([2, 10 * (2*torch.pi), 0, 0], dtype=torch.float32).view(4, 1, 1)
+        init_radius = torch.tensor([2, 10 * (2*torch.pi), torch.pi, 1], dtype=torch.float32).view(4, 1, 1)
         self.gabor_x = nn.Parameter(
             nn.init.uniform_(torch.empty(4, 1, embedding_dim, dtype=torch.float32), -1, 1)
             * init_mean + init_radius
@@ -163,7 +164,7 @@ class GaborPositionEmbeddings(nn.Module):
         self.exp_x2 = torch.exp(-self.x**2)
         self.exp_y2 = torch.exp(-self.y**2)
 
-        self.projection_layer = nn.Linear(embedding_dim, embedding_dim, bias=True) if projection else None
+        self.projection_layer = nn.Linear(embedding_dim, self.projection_size, bias=True) if projection else None
 
     def forward(self) -> torch.Tensor:
         device = self.gabor_x.device

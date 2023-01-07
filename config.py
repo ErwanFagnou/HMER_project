@@ -7,7 +7,8 @@ checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt
 
 # Model
 name = "CNN_V3"
-use_gabor_position_embeddings = False
+use_gabor_position_embeddings = True
+gabor_embeddings_size = 32
 project_position_embeddings = True
 
 # Dataset parameters

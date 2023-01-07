@@ -78,8 +78,10 @@ def get_CNN_encoder(dataset: DatasetManager):
             grid_rows = math.ceil(dataset.max_img_h / (2 ** len(self.kernel_sizes)))
             grid_cols = math.ceil(dataset.max_img_w / (2 ** len(self.kernel_sizes)))
             if self.use_gabor_position_embeddings:
-                self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, self.output_size,
-                                                              projection=config.project_position_embeddings)
+                emb_size = config.gabor_embeddings_size if config.project_position_embeddings else self.output_size
+                self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, emb_size,
+                                                              projection=config.project_position_embeddings,
+                                                              projection_size=self.output_size)
             else:
                 self.pos_embeddings = nn.Parameter(torch.zeros(1, grid_rows, grid_cols, self.output_size))
                 nn.init.trunc_normal_(self.pos_embeddings, std=0.02)
