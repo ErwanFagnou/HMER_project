@@ -105,11 +105,12 @@ def get_CNN_encoder(dataset: DatasetManager):
             x = x.permute(0, 2, 3, 1)
             # shape: (batch_size, height,  width, channels)
 
+            # dropout
+            x = self.dropout(x)
+
             # add position embeddings
             x = x + self.get_position_embeddings()[:, :x.shape[1], :x.shape[2]]
 
-            # dropout
-            x = self.dropout(x)
 
             x = x.flatten(start_dim=1, end_dim=2)
             # shape: (batch_size, height * width, channels)
