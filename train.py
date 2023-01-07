@@ -7,7 +7,7 @@ import config
 
 
 class HMERModel(pl.LightningModule, ABC):
-    def __init__(self, mask_token_id=-100):
+    def __init__(self, mask_token_id=config.additional_tokens['<pad>']):
         super(HMERModel, self).__init__()
         self.mask_token_id = mask_token_id
 
