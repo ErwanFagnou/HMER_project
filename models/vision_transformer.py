@@ -81,7 +81,8 @@ def get_CNN_encoder(dataset: DatasetManager):
                 self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, self.output_size,
                                                               projection=config.project_position_embeddings)
             else:
-                self.pos_embeddings = nn.Parameter(torch.randn(1, grid_rows, grid_cols, self.output_size))
+                self.pos_embeddings = nn.Parameter(torch.zeros(1, grid_rows, grid_cols, self.output_size))
+                nn.init.trunc_normal_(self.pos_embeddings, std=0.02)
 
             # layer norm?
             # self.layer_norm = nn.LayerNorm(self.output_size)
