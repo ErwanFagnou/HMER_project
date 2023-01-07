@@ -18,7 +18,7 @@ batch_padding = True
 include_sos_and_eos = False  # taken care of by transformer
 
 # Training parameters
-epochs = 5000
+epochs = 500
 effective_batch_size = 64
 batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
