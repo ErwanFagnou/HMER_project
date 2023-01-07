@@ -11,7 +11,7 @@ use_gabor_position_embeddings = False
 project_position_embeddings = True
 
 # Dataset parameters
-downscale = 2
+downscale = 1
 additional_tokens = {"<pad>": 0, "<sos>": 1, "<eos>": 0}
 precompute_padding = False
 batch_padding = True

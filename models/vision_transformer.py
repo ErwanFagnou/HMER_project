@@ -49,8 +49,8 @@ def get_CNN_encoder(dataset: DatasetManager):
 
     class CNNEncoder(nn.Module):
         output_size = 64
-        num_channels = [1, 16, 32, 48, output_size]
-        kernel_sizes = [3, 3, 3, 3]
+        num_channels = [1, 16, 16, 32, 48, output_size]
+        kernel_sizes = [3, 3, 3, 3, 3]
         cnn_activation_cls = nn.ELU
         fc_activation_cls = nn.ELU
         dropout_rate = 0.2
@@ -128,8 +128,8 @@ def get_CNN_encoder(dataset: DatasetManager):
 
 def get_decoder(dataset: DatasetManager):
     decoder_config = TrOCRConfig(
-        d_model=75,
-        decoder_ffn_dim=75,
+        d_model=50,
+        decoder_ffn_dim=50,
         decoder_layers=1,
         decoder_attention_heads=5,
         max_position_embeddings=512,
