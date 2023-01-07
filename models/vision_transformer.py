@@ -2,7 +2,9 @@ import math
 
 import torch
 from torch import nn
+from torch.nn import CrossEntropyLoss
 from transformers import VisionEncoderDecoderModel, ViTModel, TrOCRForCausalLM, ViTConfig, TrOCRConfig
+from transformers.modeling_outputs import Seq2SeqLMOutput
 from transformers.utils import ModelOutput
 
 from custom_embeddings import CustomViTEmbeddings, GaborPositionEmbeddings
@@ -162,13 +164,76 @@ def get_decoder(dataset: DatasetManager):
     return decoder
 
 
+class CustomDecoder(nn.Module):
+    dropout_rate = 0.2
+
+    # Self-attention
+    self_attention_num_heads = 4
+    hidden_state_dim = 64  # = encoder output dim
+
+    def __init__(self, dataset: DatasetManager):
+        super().__init__()
+
+        self.sequence_pos_embedding = nn.Parameter(
+                nn.init.trunc_normal_(
+                    torch.zeros(1, dataset.max_label_len, self.hidden_state_dim, dtype=torch.float32),
+                    mean=0.0,
+                    std=0.02,
+                )
+            )
+        self.self_attn = nn.MultiheadAttention(self.hidden_state_dim, self.self_attention_num_heads, dropout=self.dropout_rate, batch_first=True)
+
+        # Encoder output (image patch encodings)
+        self.image_attn = nn.MultiheadAttention(self.hidden_state_dim, 1, dropout=self.dropout_rate, batch_first=True)
+
+        self.initial_hidden_state = nn.Parameter(torch.zeros(1, self.hidden_state_dim))
+
+        self.fc1 = nn.Linear(self.hidden_state_dim, self.hidden_state_dim)
+        self.fc2 = nn.Linear(self.hidden_state_dim, len(dataset.label2id))
+        self.activation = nn.ELU()
+
+    def recursive_forward(self, prev_hidden_states, encoder_output):
+        # get last hidden state
+        hidden_state = prev_hidden_states[:, -1:, :]
+        # shape: (batch_size, 1, hidden_state_dim)
+
+        # add relative position embeddings  TODO: is relative better?
+        prev_hidden_states = prev_hidden_states + self.sequence_pos_embedding[:, -prev_hidden_states.shape[1]:]
+        # shape: (batch_size, prev_seq_len, hidden_state_dim)
+
+        # get query to make
+        query = self.self_attn(hidden_state, prev_hidden_states, prev_hidden_states)[0]
+        # shape: (batch_size, 1, self_attention_dim)
+
+        # use the query on the image
+        next_hidden_state = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]
+        # shape: (batch_size, hidden_state_dim)
+        return next_hidden_state
+
+    def forward(self, input_ids, inputs_embeds):
+        # inputs: (batch_size, seq_len)
+        # inputs_embeds: (batch_size, height * width, d_model)
+        batch_size = input_ids.shape[0]
+
+        hidden_states = self.initial_hidden_state.repeat(batch_size, 1).unsqueeze(1)
+        for t in range(input_ids.shape[1]):
+            next_hidden_state = self.recursive_forward(hidden_states, inputs_embeds)
+            hidden_states = torch.cat([hidden_states, next_hidden_state.unsqueeze(1)], dim=1)
+
+        x = self.fc1(hidden_states[:, 1:])
+        x = self.activation(x)
+        logits = self.fc2(x)
+
+        return ModelOutput(logits=logits, hidden_states=None, attentions=None)
+
+
 class TrOCR(HMERModel):
     def __init__(self, dataset: DatasetManager):
         super().__init__(mask_token_id=dataset.label2id['<pad>'])
         # self.encoder = get_ViT_encoder(dataset)
         self.encoder = get_CNN_encoder(dataset)
 
-        self.decoder = get_decoder(dataset)
+        # self.decoder = get_decoder(dataset)
 
         self.encoder_decoder = VisionEncoderDecoderModel(encoder=self.encoder, decoder=self.decoder)
         self.encoder_decoder.config.decoder_start_token_id = self.decoder.config.decoder_start_token_id
@@ -205,3 +270,29 @@ class TrOCR(HMERModel):
         decoded = self.encoder_decoder.generate(pixel_values=x)
 
         return decoded
+
+
+class CustomEncoderDecoder(HMERModel):
+    def __init__(self, dataset: DatasetManager):
+        super().__init__()
+        self.encoder = get_CNN_encoder(dataset)
+        self.decoder = CustomDecoder(dataset)
+
+        self.vocab_size = len(dataset.label2id)
+        self.result = None
+
+    def forward(self, pixel_values, labels):
+        x = pixel_values.unsqueeze(1)  # add channel dim
+
+        encoder_outputs = self.encoder(x)
+        decoder_outputs = self.decoder(labels, encoder_outputs.last_hidden_state)
+
+        loss_fct = CrossEntropyLoss()
+        loss = loss_fct(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
+
+        self.result = Seq2SeqLMOutput(
+            loss=loss,
+            logits=decoder_outputs.logits,
+        )
+
+        return loss
