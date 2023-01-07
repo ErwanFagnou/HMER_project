@@ -43,14 +43,15 @@ if __name__ == '__main__':
     print("Test size 2016:", len(crohme.test_loaders['TEST16'].dataset))
     print("Test size 2019:", len(crohme.test_loaders['TEST19'].dataset))
 
-    model = TrOCR(crohme).to(config.device)
+    # model = TrOCR(crohme).to(config.device)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V1-3jxjprsy/epoch=epoch=414-step=step=57685-val_loss=val_loss=0.1211.ckpt", dataset=crohme).to(config.device)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V2-pcfs4qv7/epoch=499-step=69500-last.ckpt", dataset=crohme).to(config.device)
+    model = TrOCR.load_from_checkpoint("checkpoints/CNN_V3-bm63svkd/epoch=499-step=69500-last.ckpt", dataset=crohme).to(config.device)
 
     model.eval()
 
-    # # loader = crohme.train_loader
-    # loader = crohme.test_loaders["TEST14"]
-    # show_generate(model, loader)
+    # loader = crohme.train_loader
+    loader = crohme.test_loaders["TEST14"]
+    show_generate(model, loader)
 
-    show_pos_embeddings(model)
+    # show_pos_embeddings(model)
