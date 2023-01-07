@@ -35,12 +35,14 @@ if __name__ == '__main__':
         filename="epoch={epoch:02d}-step={step:05d}-last",
     )
 
+    scheduler_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
+
     trainer_kwargs = {}
     if config.reload_from_checkpoint:
         trainer_kwargs['resume_from_checkpoint'] = config.checkpoint_path
     trainer = pl.Trainer(
         logger=wandb_logger,
-        callbacks=[val_checkpoint_callback, last_checkpoint_callback],
+        callbacks=[val_checkpoint_callback, last_checkpoint_callback, scheduler_callback],
         accelerator=config.trainer_accelerator,
         devices=1,
         max_epochs=config.epochs,

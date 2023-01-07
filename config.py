@@ -24,6 +24,8 @@ batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
 opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)
+lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
+lr_scheduler_kwargs = dict(T_max=epochs, eta_min=1e-5)
 
 # optimizer = torch.optim.SGD
 # opt_kwargs = dict(lr=1e-2, momentum=0.9, weight_decay=0)
