@@ -130,10 +130,10 @@ def get_CNN_encoder(dataset: DatasetManager):
 
 def get_decoder(dataset: DatasetManager):
     decoder_config = TrOCRConfig(
-        d_model=50,
-        decoder_ffn_dim=50,
+        d_model=100,
+        decoder_ffn_dim=100,
         decoder_layers=1,
-        decoder_attention_heads=5,
+        decoder_attention_heads=1,
         max_position_embeddings=512,
         use_learned_position_embeddings=True,
         vocab_size=len(dataset.label2id),
