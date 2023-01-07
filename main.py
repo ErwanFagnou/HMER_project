@@ -5,8 +5,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 import config
 import datasets
-from models.vision_transformer import TrOCR
-
+from models.vision_transformer import TrOCR, CustomEncoderDecoder
 
 if __name__ == '__main__':
     crohme = datasets.DatasetManager(
@@ -19,7 +18,9 @@ if __name__ == '__main__':
     )
     print(crohme.max_img_h, crohme.max_img_w, crohme.max_label_len)
 
-    model = TrOCR(crohme).to(config.device)
+    model = CustomEncoderDecoder(crohme)
+    # model = TrOCR(crohme)
+    model = model.to(config.device)
 
     wandb_logger = WandbLogger(project="HMER", entity="efagnou", name=config.name)
     wandb_logger.log_hyperparams(config.config_dict)
