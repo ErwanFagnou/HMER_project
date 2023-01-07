@@ -28,11 +28,11 @@ if __name__ == '__main__':
     val_checkpoint_callback = ModelCheckpoint(
         dirpath=save_dir,
         monitor="val_loss",
-        filename="epoch={epoch:02d}-step={step:05d}-val_loss={val_loss:.4f}",
+        filename="{epoch:02d}-{step:05d}-{val_loss:.4f}",
     )
     last_checkpoint_callback = ModelCheckpoint(
         dirpath=save_dir,
-        filename="epoch={epoch:02d}-step={step:05d}-last",
+        filename="{epoch:02d}-{step:05d}-last",
     )
 
     scheduler_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")

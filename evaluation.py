@@ -12,7 +12,9 @@ if __name__ == '__main__':
     print(crohme.max_img_h, crohme.max_img_w, crohme.max_label_len)
 
     # model = TrOCR(crohme).to(config.device)
-    model = TrOCR.load_from_checkpoint("lightning_logs/version_66/checkpoints/epoch=103-step=14456.ckpt", dataset=crohme).to(config.device)
+    # model = TrOCR.load_from_checkpoint("lightning_logs/version_66/checkpoints/epoch=103-step=14456.ckpt", dataset=crohme).to(config.device)
+    # model = TrOCR.load_from_checkpoint("HMER/1wuz8qnm/checkpoints/epoch=77-step=10842.ckpt", dataset=crohme).to(config.device)
+    model = TrOCR.load_from_checkpoint("checkpoints/CNN_V1-3jxjprsy/epoch=epoch=414-step=step=57685-val_loss=val_loss=0.1211.ckpt", dataset=crohme).to(config.device)
     model.eval()
 
     import matplotlib.pyplot as plt
