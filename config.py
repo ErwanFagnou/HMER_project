@@ -6,7 +6,7 @@ reload_from_checkpoint = False
 checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt"
 
 # Model
-name = "CNN_V1"
+name = "CNN_V2"
 use_gabor_position_embeddings = False
 project_position_embeddings = True
 
