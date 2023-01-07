@@ -12,13 +12,13 @@ project_position_embeddings = True
 
 # Dataset parameters
 downscale = 1
-additional_tokens = {"<pad>": 0, "<sos>": 1, "<eos>": 0}
+additional_tokens = {"<eos>": 0, "<pad>": 0, "<sos>": 1}
 precompute_padding = False
 batch_padding = True
 include_sos_and_eos = False  # taken care of by transformer
 
 # Training parameters
-epochs = 1000
+epochs = 5000
 effective_batch_size = 64
 batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
