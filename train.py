@@ -12,7 +12,9 @@ class HMERModel(pl.LightningModule, ABC):
         self.mask_token_id = mask_token_id
 
     def configure_optimizers(self):
-        return config.optimizer(self.parameters(), **config.opt_kwargs)
+        optimizer = config.optimizer(self.parameters(), **config.opt_kwargs)
+        lr_scheduler = config.lr_scheduler(optimizer, **config.lr_scheduler_kwargs)
+        return [optimizer], [lr_scheduler]
 
     def training_step(self, batch, batch_idx, log_prefix='train_'):
         inputs, outputs = batch
@@ -36,7 +38,7 @@ class HMERModel(pl.LightningModule, ABC):
                 loss = self(sample_input, sample_output)
             loss /= len(inputs)
 
-        self.log(log_prefix + 'loss', loss, prog_bar=True, on_epoch=True)
+        self.log(log_prefix + 'loss', loss, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
