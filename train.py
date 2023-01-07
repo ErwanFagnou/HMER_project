@@ -7,46 +7,44 @@ import config
 
 
 class HMERModel(pl.LightningModule, ABC):
-    def __init__(self):
+    def __init__(self, mask_token_id=-100):
         super(HMERModel, self).__init__()
+        self.mask_token_id = mask_token_id
 
     def configure_optimizers(self):
         return config.optimizer(self.parameters(), **config.opt_kwargs)
 
-    def training_step(self, batch, batch_idx, log=True):
+    def training_step(self, batch, batch_idx, log_prefix='train_'):
         inputs, outputs = batch
 
         if isinstance(inputs, torch.Tensor):
             inputs = inputs.type(torch.FloatTensor).to(self.device)
             outputs = outputs.type(torch.LongTensor).to(self.device)
-            pred = self(inputs, outputs)
-            pred_flat = pred.view(-1, pred.shape[-1])
-            outputs_flat = outputs.view(-1)
-            loss = config.loss_fn(pred_flat, outputs_flat)# / inputs.shape[0]
+            loss = self(inputs, outputs)
+
+            pred_ids = self.result.logits.argmax(dim=-1)
+            mask = outputs != self.mask_token_id
+            acc = (pred_ids == outputs)[mask].float().mean()
+            self.log(log_prefix + 'acc', acc, on_epoch=True)
+            self.log(log_prefix + 'error', 1 - acc, on_epoch=True)
+
         else:
             loss = 0
             for sample_input, sample_output in zip(inputs, outputs):
                 sample_input = sample_input[None, :].type(torch.FloatTensor).to(self.device)
                 sample_output = sample_output[None, :].type(torch.LongTensor).to(self.device)
-                pred = self(sample_input, sample_output)
-                pred_flat = pred.view(-1, pred.shape[-1])
-                outputs_flat = sample_output.view(-1)
-                # print(sample_input, pred, sample_output)
-                loss += config.loss_fn(pred_flat, outputs_flat)
+                loss = self(sample_input, sample_output)
             loss /= len(inputs)
 
-        if log:
-            self.log('train_loss', loss, on_epoch=True)
+        self.log(log_prefix + 'loss', loss, prog_bar=True, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        loss = self.training_step(batch, batch_idx, log=False)
-        self.log('val_loss', loss, prog_bar=True, on_epoch=True)
+        loss = self.training_step(batch, batch_idx, log_prefix='val_')
         return loss
 
     def test_step(self, batch, batch_idx):
-        loss = self.training_step(batch, batch_idx, log=False)
-        self.log('test_loss', loss, prog_bar=True, on_epoch=True)
+        loss = self.training_step(batch, batch_idx, log_prefix='test_')
         return loss
 
     # def train_dataloader(self):

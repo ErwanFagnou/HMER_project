@@ -162,7 +162,7 @@ def get_decoder(dataset: DatasetManager):
 
 class TrOCR(HMERModel):
     def __init__(self, dataset: DatasetManager):
-        super().__init__()
+        super().__init__(mask_token_id=dataset.label2id['<pad>'])
         # self.encoder = get_ViT_encoder(dataset)
         self.encoder = get_CNN_encoder(dataset)
 
