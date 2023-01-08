@@ -171,9 +171,13 @@ class CustomDecoder(nn.Module):
     self_attention_num_heads = 4
     hidden_state_dim = 64  # = encoder output dim
 
+    skip_connections = True
+
     def __init__(self, dataset: DatasetManager):
         super().__init__()
         nb_classes = len(dataset.label2id)
+
+        self.layernorm_encoder_outputs = nn.LayerNorm(self.hidden_state_dim)
 
         self.token_embeddings = nn.Embedding(nb_classes, self.hidden_state_dim)
         nn.init.kaiming_normal_(self.token_embeddings.weight, nonlinearity='relu')
@@ -191,7 +195,9 @@ class CustomDecoder(nn.Module):
         self.fc2 = nn.Linear(self.hidden_state_dim, nb_classes)
         self.activation = nn.ELU()
 
-        self.layernorm = nn.LayerNorm(self.hidden_state_dim)
+        # Recursive part
+        self.fc_rnn = nn.Linear(self.hidden_state_dim, self.hidden_state_dim)
+        self.layernorm_hidden_state = nn.LayerNorm(self.hidden_state_dim)
 
     def recursive_forward(self, prev_hidden_states, encoder_output):
         # get last hidden state
@@ -202,21 +208,27 @@ class CustomDecoder(nn.Module):
         prev_hidden_states = prev_hidden_states + self.sequence_pos_embedding[:, -prev_hidden_states.shape[1]:]
         # shape: (batch_size, prev_seq_len, hidden_state_dim)
 
-        # get query to make
+        # get query to make: given the current state, where is the next symbol in the image?
         query = self.self_attn(hidden_state, prev_hidden_states, prev_hidden_states)[0]
         # shape: (batch_size, 1, self_attention_dim)
 
         # use the query on the image
-        next_hidden_state = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]  # todo: optimize
+        x = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]  # todo: optimize
         # shape: (batch_size, hidden_state_dim)
 
-        next_hidden_state = self.layernorm(next_hidden_state)
+        x = self.activation(x)
+        x = self.fc_rnn(x)
+        if self.skip_connections:
+            x = x + hidden_state[:, 0]
+        next_hidden_state = self.layernorm_hidden_state(x)
         return next_hidden_state
 
     def forward(self, inputs_embeds, input_ids, stop_at_id=None):
         # inputs_embeds: (batch_size, height * width, d_model)
         # inputs_ids: (batch_size, seq_len)
         batch_size = inputs_embeds.shape[0]
+
+        inputs_embeds = self.layernorm_encoder_outputs(inputs_embeds)
 
         input_ids_embeds = self.token_embeddings(input_ids)
 
