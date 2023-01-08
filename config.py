@@ -10,14 +10,15 @@ weights_only = True
 name = "Model_V4"
 
 use_pretrained_encoder = True
-pretrained_path = "final_models/CNN-V3.pt"
+pretrained_path = "final_models/CNN-V2.pt"
 pretrain_learn_encoder_positional_embeddings = True
 
-use_gabor_position_embeddings = True
+use_gabor_position_embeddings = False
 gabor_embeddings_size = 32
 project_position_embeddings = True
 
-use_past_true_outputs = False
+use_past_true_outputs = True
+skip_connection = False
 
 # Dataset parameters
 downscale = 1
@@ -29,7 +30,7 @@ include_sos_and_eos = False  # taken care of by transformer
 # Training parameters
 epochs = 500
 effective_batch_size = 64
-batch_size = 64
+batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
 opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)

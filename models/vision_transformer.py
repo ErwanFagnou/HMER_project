@@ -168,7 +168,7 @@ class CustomDecoder(nn.Module):
     self_attention_num_heads = 4
     hidden_state_dim = 64  # = encoder output dim
 
-    skip_connections = True
+    skip_connections = config.skip_connection
 
     def __init__(self, dataset: DatasetManager):
         super().__init__()
