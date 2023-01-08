@@ -50,9 +50,9 @@ def get_ViT_encoder(dataset: DatasetManager):
 
 
 class CNNEncoder(nn.Module):
-    output_size = 64
-    num_channels = [1, 16, 16, 32, 48, output_size]
-    kernel_sizes = [3, 3, 3, 3, 3]
+    output_size = 32
+    num_channels = [1, 16, 16, 32, 32, output_size]
+    kernel_sizes = [4, 4, 4, 4, 4]
     cnn_activation_cls = nn.ELU
     fc_activation_cls = nn.ELU
     dropout_rate = 0.2
