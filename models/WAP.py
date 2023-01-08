@@ -25,7 +25,7 @@ class WAPDecoder(nn.Module):
         self.rnn_cell = nn.GRUCell(input_size=self.embedding_dim + self.encoder_dim,
                                    hidden_size=self.hidden_dim, bias=False)
         self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
-        self.context_layernorm = nn.LayerNorm(self.embedding_dim, elementwise_affine=False)
+        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
 
         # context vector
         self.attention_logits_1 = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
