@@ -173,14 +173,13 @@ class CustomDecoder(nn.Module):
 
     def __init__(self, dataset: DatasetManager):
         super().__init__()
+        nb_classes = len(dataset.label2id)
+
+        self.token_embeddings = nn.Embedding(nb_classes, self.hidden_state_dim)
+        nn.init.kaiming_normal_(self.token_embeddings.weight, nonlinearity='relu')
 
         self.sequence_pos_embedding = nn.Parameter(
-                nn.init.trunc_normal_(
-                    torch.zeros(1, dataset.max_label_len, self.hidden_state_dim, dtype=torch.float32),
-                    mean=0.0,
-                    std=0.02,
-                )
-            )
+                nn.init.kaiming_normal_(torch.zeros(1, dataset.max_label_len, self.hidden_state_dim), nonlinearity='relu'))
         self.self_attn = nn.MultiheadAttention(self.hidden_state_dim, self.self_attention_num_heads, dropout=self.dropout_rate, batch_first=True)
 
         # Encoder output (image patch encodings)
@@ -189,7 +188,7 @@ class CustomDecoder(nn.Module):
         self.initial_hidden_state = nn.Parameter(torch.zeros(1, self.hidden_state_dim))
 
         self.fc1 = nn.Linear(self.hidden_state_dim, self.hidden_state_dim)
-        self.fc2 = nn.Linear(self.hidden_state_dim, len(dataset.label2id))
+        self.fc2 = nn.Linear(self.hidden_state_dim, nb_classes)
         self.activation = nn.ELU()
 
         self.layernorm = nn.LayerNorm(self.hidden_state_dim)
@@ -208,25 +207,34 @@ class CustomDecoder(nn.Module):
         # shape: (batch_size, 1, self_attention_dim)
 
         # use the query on the image
-        next_hidden_state = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]
+        next_hidden_state = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]  # todo: optimize
         # shape: (batch_size, hidden_state_dim)
 
         next_hidden_state = self.layernorm(next_hidden_state)
         return next_hidden_state
 
-    def forward(self, inputs_embeds, sequence_length, stop_at_id=None):
-        # inputs: (batch_size, seq_len)
+    def forward(self, inputs_embeds, input_ids, stop_at_id=None):
         # inputs_embeds: (batch_size, height * width, d_model)
+        # inputs_ids: (batch_size, seq_len)
         batch_size = inputs_embeds.shape[0]
 
-        hidden_states = self.initial_hidden_state.repeat(batch_size, 1).unsqueeze(1)
-        for t in range(sequence_length):
-            next_hidden_state = self.recursive_forward(hidden_states, inputs_embeds)
-            hidden_states = torch.cat([hidden_states, next_hidden_state.unsqueeze(1)], dim=1)
-            if stop_at_id is not None and (hidden_states[:, -1] == stop_at_id).all():
-                break
+        input_ids_embeds = self.token_embeddings(input_ids)
 
-        x = self.fc1(hidden_states[:, 1:])
+        hidden_states = []
+        hidden_states_with_decision = self.initial_hidden_state.repeat(batch_size, 1).unsqueeze(1)
+        for t in range(input_ids.shape[1]):
+            hidden_state = self.recursive_forward(hidden_states_with_decision, inputs_embeds)
+            hidden_states.append(hidden_state)
+
+            hidden_state_with_decision = hidden_state + input_ids_embeds[:, t]
+            hidden_states_with_decision = torch.cat([hidden_states_with_decision,
+                                                     hidden_state_with_decision.unsqueeze(1)], dim=1)
+            # if stop_at_id is not None and (hidden_states[:, -1] == stop_at_id).all():
+            #     break
+
+        hidden_states = torch.stack(hidden_states, dim=1)
+
+        x = self.fc1(hidden_states)
         x = self.activation(x)
         logits = self.fc2(x)
 
@@ -293,7 +301,7 @@ class CustomEncoderDecoder(HMERModel):
         x = pixel_values.unsqueeze(1)  # add channel dim
 
         encoder_outputs = self.encoder(x)
-        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, sequence_length)
+        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, labels)
 
         loss_fct = CrossEntropyLoss()
         loss = loss_fct(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
