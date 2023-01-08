@@ -180,9 +180,9 @@ class CustomDecoder(nn.Module):
             self.token_embeddings = nn.Embedding(nb_classes, self.hidden_state_dim)
             nn.init.kaiming_normal_(self.token_embeddings.weight, nonlinearity='relu')
 
-        self.sequence_pos_embedding = nn.Parameter(
-                nn.init.kaiming_normal_(torch.zeros(1, dataset.max_label_len, self.hidden_state_dim), nonlinearity='relu'))
         if config.attention_on_past:
+            self.sequence_pos_embedding = nn.Parameter(
+                    nn.init.kaiming_normal_(torch.zeros(1, dataset.max_label_len, self.hidden_state_dim), nonlinearity='relu'))
             self.self_attn = nn.MultiheadAttention(self.hidden_state_dim, self.self_attention_num_heads, dropout=self.dropout_rate, batch_first=True)
         else:
             self.fc_query = nn.Linear(self.hidden_state_dim, self.hidden_state_dim)
