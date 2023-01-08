@@ -47,89 +47,85 @@ def get_ViT_encoder(dataset: DatasetManager):
     return encoder
 
 
-def get_CNN_encoder(dataset: DatasetManager):
+class CNNEncoder(nn.Module):
+    output_size = 64
+    num_channels = [1, 16, 16, 32, 48, output_size]
+    kernel_sizes = [3, 3, 3, 3, 3]
+    cnn_activation_cls = nn.ELU
+    fc_activation_cls = nn.ELU
+    dropout_rate = 0.2
+    use_gabor_position_embeddings = config.use_gabor_position_embeddings
 
-    class CNNEncoder(nn.Module):
-        output_size = 64
-        num_channels = [1, 16, 16, 32, 48, output_size]
-        kernel_sizes = [3, 3, 3, 3, 3]
-        cnn_activation_cls = nn.ELU
-        fc_activation_cls = nn.ELU
-        dropout_rate = 0.2
-        use_gabor_position_embeddings = config.use_gabor_position_embeddings
+    config = ViTConfig(
+        hidden_size=output_size,
+    )
+    main_input_name = 'pixel_values'
 
-        config = ViTConfig(
-            hidden_size=output_size,
-        )
-        main_input_name = 'pixel_values'
+    def __init__(self, dataset: DatasetManager):
+        super().__init__()
+        self.cnn_activation = self.cnn_activation_cls()
+        self.fc_activation = self.fc_activation_cls()
 
-        def __init__(self):
-            super().__init__()
-            self.cnn_activation = self.cnn_activation_cls()
-            self.fc_activation = self.fc_activation_cls()
+        layers = []
+        for i in range(len(self.num_channels) - 1):
+            layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
+            layers.append(nn.MaxPool2d(2))
+            layers.append(self.cnn_activation)
+        self.cnn = nn.Sequential(*layers)
 
-            layers = []
-            for i in range(len(self.num_channels) - 1):
-                layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
-                layers.append(nn.MaxPool2d(2))
-                layers.append(self.cnn_activation)
-            self.cnn = nn.Sequential(*layers)
+        self.dropout = nn.Dropout(self.dropout_rate)
 
-            self.dropout = nn.Dropout(self.dropout_rate)
+        grid_rows = math.ceil(dataset.max_img_h / (2 ** len(self.kernel_sizes)))
+        grid_cols = math.ceil(dataset.max_img_w / (2 ** len(self.kernel_sizes)))
+        if self.use_gabor_position_embeddings:
+            emb_size = config.gabor_embeddings_size if config.project_position_embeddings else self.output_size
+            self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, emb_size,
+                                                          projection=config.project_position_embeddings,
+                                                          projection_size=self.output_size)
+        else:
+            self.pos_embeddings = nn.Parameter(torch.zeros(1, grid_rows, grid_cols, self.output_size))
+            nn.init.trunc_normal_(self.pos_embeddings, std=0.02)
 
-            grid_rows = math.ceil(dataset.max_img_h / (2 ** len(self.kernel_sizes)))
-            grid_cols = math.ceil(dataset.max_img_w / (2 ** len(self.kernel_sizes)))
-            if self.use_gabor_position_embeddings:
-                emb_size = config.gabor_embeddings_size if config.project_position_embeddings else self.output_size
-                self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, emb_size,
-                                                              projection=config.project_position_embeddings,
-                                                              projection_size=self.output_size)
-            else:
-                self.pos_embeddings = nn.Parameter(torch.zeros(1, grid_rows, grid_cols, self.output_size))
-                nn.init.trunc_normal_(self.pos_embeddings, std=0.02)
+        # layer norm?
+        # self.layer_norm = nn.LayerNorm(self.output_size)
 
-            # layer norm?
-            # self.layer_norm = nn.LayerNorm(self.output_size)
+        # self.fc1 = nn.Linear(self.num_channels[-1], self.output_size)
+        # self.fc2 = nn.Linear(self.output_size, self.output_size)
 
-            # self.fc1 = nn.Linear(self.num_channels[-1], self.output_size)
-            # self.fc2 = nn.Linear(self.output_size, self.output_size)
+    def get_output_embeddings(self):
+        return None
 
-        def get_output_embeddings(self):
-            return None
+    def get_position_embeddings(self):
+        if self.use_gabor_position_embeddings:
+            return self.pos_embeddings()
+        else:
+            return self.pos_embeddings
 
-        def get_position_embeddings(self):
-            if self.use_gabor_position_embeddings:
-                return self.pos_embeddings()
-            else:
-                return self.pos_embeddings
+    def forward(self, pixel_values: torch.Tensor, **_):
+        x = self.cnn(pixel_values)
+        # shape: (batch_size, channels, height, width)
 
-        def forward(self, pixel_values: torch.Tensor, **_):
-            x = self.cnn(pixel_values)
-            # shape: (batch_size, channels, height, width)
+        x = x.permute(0, 2, 3, 1)
+        # shape: (batch_size, height,  width, channels)
 
-            x = x.permute(0, 2, 3, 1)
-            # shape: (batch_size, height,  width, channels)
+        # dropout
+        x = self.dropout(x)
 
-            # dropout
-            x = self.dropout(x)
-
-            # add position embeddings
-            x = x + self.get_position_embeddings()[:, :x.shape[1], :x.shape[2]]
+        # add position embeddings
+        x = x + self.get_position_embeddings()[:, :x.shape[1], :x.shape[2]]
 
 
-            x = x.flatten(start_dim=1, end_dim=2)
-            # shape: (batch_size, height * width, channels)
+        x = x.flatten(start_dim=1, end_dim=2)
+        # shape: (batch_size, height * width, channels)
 
-            # x = self.fc1(x)
-            # x = self.fc_activation(x)
-            # x = self.fc2(x)
-            # x = self.fc_activation(x)
+        # x = self.fc1(x)
+        # x = self.fc_activation(x)
+        # x = self.fc2(x)
+        # x = self.fc_activation(x)
 
-            # x = self.layer_norm(x)
+        # x = self.layer_norm(x)
 
-            return ModelOutput(last_hidden_state=x, hidden_states=None, attentions=None)
-
-    return CNNEncoder()
+        return ModelOutput(last_hidden_state=x, hidden_states=None, attentions=None)
 
 
 def get_decoder(dataset: DatasetManager):
@@ -257,7 +253,7 @@ class TrOCR(HMERModel):
     def __init__(self, dataset: DatasetManager):
         super().__init__(mask_token_id=dataset.label2id['<pad>'])
         # self.encoder = get_ViT_encoder(dataset)
-        self.encoder = get_CNN_encoder(dataset)
+        self.encoder = CNNEncoder(dataset)
 
         # self.decoder = get_decoder(dataset)
 
@@ -301,12 +297,16 @@ class TrOCR(HMERModel):
 class CustomEncoderDecoder(HMERModel):
     def __init__(self, dataset: DatasetManager):
         super().__init__()
-        self.encoder = get_CNN_encoder(dataset)
+        self.encoder = CNNEncoder(dataset)
         self.decoder = CustomDecoder(dataset)
 
         self.vocab_size = len(dataset.label2id)
         self.eos_token_id = dataset.label2id['<eos>']
         self.result = None
+
+    def configure_optimizers(self):
+        params = self.decoder.parameters()
+        return torch.optim.Adam(params, **config.opt_kwargs)
 
     def forward(self, pixel_values, labels=None, sequence_length=0):
         sequence_length = labels.shape[1] if labels is not None else sequence_length

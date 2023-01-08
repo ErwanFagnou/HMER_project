@@ -22,6 +22,17 @@ if __name__ == '__main__':
     # model = TrOCR(crohme)
     model = model.to(config.device)
 
+    if config.use_pretrained_encoder:
+        print(f'Loading pretrained encoder from {config.pretrained_path}')
+        if config.pretrained_path.endswith('/CNN-V2.pt'):
+            pretrained: TrOCR = torch.load(config.pretrained_path)
+            model.encoder.load_state_dict(pretrained.encoder.state_dict())
+        elif config.pretrained_path.endswith('/CNN-V3.pt'):
+            pretrained: TrOCR = torch.load(config.pretrained_path)
+            model.encoder.load_state_dict(pretrained.encoder.state_dict())
+        else:
+            raise ValueError("Invalid pretrained path")
+
     wandb_logger = WandbLogger(project="HMER", entity="efagnou", name=config.name)
     wandb_logger.log_hyperparams(config.config_dict)
 

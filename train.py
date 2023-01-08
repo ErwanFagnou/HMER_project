@@ -11,8 +11,10 @@ class HMERModel(pl.LightningModule, ABC):
         super(HMERModel, self).__init__()
         self.mask_token_id = mask_token_id
 
-    def configure_optimizers(self):
-        optimizer = config.optimizer(self.parameters(), **config.opt_kwargs)
+    def configure_optimizers(self, params=None):
+        if params is None:
+            params = self.parameters()
+        optimizer = config.optimizer(params, **config.opt_kwargs)
         lr_scheduler = config.lr_scheduler(optimizer, **config.lr_scheduler_kwargs)
         return [optimizer], [lr_scheduler]
 

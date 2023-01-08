@@ -7,7 +7,9 @@ checkpoint_path = "lightning_logs/version_54/checkpoints/epoch=56-step=7923.ckpt
 
 # Model
 name = "Model_V4"
-use_gabor_position_embeddings = False
+use_pretrained_encoder = True
+pretrained_path = "final_models/CNN-V3.pt"
+use_gabor_position_embeddings = True
 gabor_embeddings_size = 32
 project_position_embeddings = True
 
@@ -24,7 +26,7 @@ effective_batch_size = 64
 batch_size = 64
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
-opt_kwargs = dict(lr=1e-4, weight_decay=1e-5)
+opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)
 lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
 lr_scheduler_kwargs = dict(T_max=epochs, eta_min=1e-6)
 
