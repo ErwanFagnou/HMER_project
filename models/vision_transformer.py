@@ -176,8 +176,9 @@ class CustomDecoder(nn.Module):
 
         self.layernorm_encoder_outputs = nn.LayerNorm(self.hidden_state_dim)
 
-        self.token_embeddings = nn.Embedding(nb_classes, self.hidden_state_dim)
-        nn.init.kaiming_normal_(self.token_embeddings.weight, nonlinearity='relu')
+        if config.use_past_true_outputs:
+            self.token_embeddings = nn.Embedding(nb_classes, self.hidden_state_dim)
+            nn.init.kaiming_normal_(self.token_embeddings.weight, nonlinearity='relu')
 
         self.sequence_pos_embedding = nn.Parameter(
                 nn.init.kaiming_normal_(torch.zeros(1, dataset.max_label_len, self.hidden_state_dim), nonlinearity='relu'))
@@ -227,7 +228,8 @@ class CustomDecoder(nn.Module):
 
         inputs_embeds = self.layernorm_encoder_outputs(inputs_embeds)
 
-        input_ids_embeds = self.token_embeddings(input_ids)
+        if config.use_past_true_outputs:
+            input_ids_embeds = self.token_embeddings(input_ids)
 
         hidden_states = []
         hidden_states_with_decision = self.initial_hidden_state.repeat(batch_size, 1).unsqueeze(1)
@@ -235,7 +237,10 @@ class CustomDecoder(nn.Module):
             hidden_state = self.recursive_forward(hidden_states_with_decision, inputs_embeds)
             hidden_states.append(hidden_state)
 
-            hidden_state_with_decision = hidden_state + input_ids_embeds[:, t]
+            if config.use_past_true_outputs:
+                hidden_state_with_decision = hidden_state + input_ids_embeds[:, t]
+            else:
+                hidden_state_with_decision = hidden_state
             hidden_states_with_decision = torch.cat([hidden_states_with_decision,
                                                      hidden_state_with_decision.unsqueeze(1)], dim=1)
             # if stop_at_id is not None and (hidden_states[:, -1] == stop_at_id).all():

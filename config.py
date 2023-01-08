@@ -10,12 +10,14 @@ weights_only = True
 name = "Model_V4"
 
 use_pretrained_encoder = True
-pretrained_path = "final_models/CNN-V2.pt"
+pretrained_path = "final_models/CNN-V3.pt"
 pretrain_learn_encoder_positional_embeddings = True
 
-use_gabor_position_embeddings = False
+use_gabor_position_embeddings = True
 gabor_embeddings_size = 32
 project_position_embeddings = True
+
+use_past_true_outputs = False
 
 # Dataset parameters
 downscale = 1
