@@ -46,8 +46,10 @@ class WAPDecoder(nn.Module):
             x = torch.softmax(x, dim=1)
             context = torch.sum(x * inputs_embeds, dim=1)
 
-            h_t = self.rnn_cell(input=torch.cat([embedded_seq[:, t, :], context], dim=1), hx=h_prev)
-            all_vectors.append(torch.cat([embedded_seq[:, t, :], context, h_t], dim=1))
+            prev_word = embedded_seq[:, t-1, :] if t > 0 else torch.zeros_like(embedded_seq[:, 0, :])
+            rnn_input = torch.cat((prev_word, context), dim=1)
+            h_t = self.rnn_cell(input=rnn_input, hx=h_prev)
+            all_vectors.append(torch.cat([rnn_input, h_t], dim=1))
 
             h_prev = h_t
 
