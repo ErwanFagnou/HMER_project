@@ -10,6 +10,7 @@ from transformers.utils import ModelOutput
 
 from custom_embeddings import CustomViTEmbeddings, GaborPositionEmbeddings
 from datasets import DatasetManager
+from models.WAP import WAPDecoder
 from train import HMERModel
 import config
 
@@ -296,7 +297,7 @@ class TrOCR(HMERModel):
     #     params = self.decoder.output_projection.parameters()
     #     return torch.optim.Adam(params, **config.opt_kwargs)
 
-    def generate(self, pixel_values):
+    def generate(self, pixel_values, **kwargs):
         x = pixel_values.unsqueeze(1)  # add channel dim
         # # inputs_ids = torch.full((pixel_values.shape[0], 1), self.encoder_decoder.config.eos_token_id, dtype=torch.long, device=pixel_values.device)
         # inputs_ids = torch.tensor([[self.encoder_decoder.config.bos_token_id, 10]], dtype=torch.long, device=pixel_values.device)
@@ -306,7 +307,7 @@ class TrOCR(HMERModel):
 
         # decoded = self.encoder_decoder.decoder.generate(encoder_outputs=encoded)
 
-        decoded = self.encoder_decoder.generate(pixel_values=x)
+        decoded = self.encoder_decoder.generate(pixel_values=x, **kwargs)
 
         return decoded
 
@@ -315,7 +316,8 @@ class CustomEncoderDecoder(HMERModel):
     def __init__(self, dataset: DatasetManager):
         super().__init__()
         self.encoder = CNNEncoder(dataset)
-        self.decoder = CustomDecoder(dataset)
+        # self.decoder = CustomDecoder(dataset)
+        self.decoder = WAPDecoder(dataset)
 
         self.vocab_size = len(dataset.label2id)
         self.eos_token_id = dataset.label2id['<eos>']
@@ -357,3 +359,5 @@ class CustomEncoderDecoder(HMERModel):
         decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, max_length, stop_at_id=self.eos_token_id)
         logits = decoder_outputs.logits
         return logits.argmax(dim=-1)
+
+
