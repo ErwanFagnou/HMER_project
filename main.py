@@ -20,7 +20,10 @@ if __name__ == '__main__':
 
     model = CustomEncoderDecoder(crohme)
     # model = TrOCR(crohme)
-    model = model.to(config.device)
+
+    if config.reload_from_checkpoint and config.weights_only:
+        print(f'Reloading weights from checkpoint {config.reload_from_checkpoint}')
+        model = CustomEncoderDecoder.load_from_checkpoint(config.checkpoint_path, dataset=crohme)
 
     if config.use_pretrained_encoder:
         print(f'Loading pretrained encoder from {config.pretrained_path}')
@@ -32,6 +35,8 @@ if __name__ == '__main__':
             model.encoder.load_state_dict(pretrained.encoder.state_dict())
         else:
             raise ValueError("Invalid pretrained path")
+
+    model = model.to(config.device)
 
     wandb_logger = WandbLogger(project="HMER", entity="efagnou", name=config.name)
     wandb_logger.log_hyperparams(config.config_dict)
@@ -53,7 +58,7 @@ if __name__ == '__main__':
     devices = [max(range(nb_devices), key=lambda i: torch.cuda.get_device_properties(i).total_memory)]
 
     trainer_kwargs = {}
-    if config.reload_from_checkpoint:
+    if config.reload_from_checkpoint and not config.weights_only:
         trainer_kwargs['resume_from_checkpoint'] = config.checkpoint_path
     trainer = pl.Trainer(
         logger=wandb_logger,

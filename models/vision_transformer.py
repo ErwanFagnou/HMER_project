@@ -305,8 +305,8 @@ class CustomEncoderDecoder(HMERModel):
         self.result = None
 
     def configure_optimizers(self):
-        params = self.decoder.parameters()
-        return torch.optim.Adam(params, **config.opt_kwargs)
+        params = self.decoder.parameters() if config.use_pretrained_encoder else None
+        return super().configure_optimizers(params)
 
     def forward(self, pixel_values, labels=None, sequence_length=0):
         sequence_length = labels.shape[1] if labels is not None else sequence_length
