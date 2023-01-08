@@ -166,7 +166,7 @@ class CustomDecoder(nn.Module):
 
     # Self-attention
     self_attention_num_heads = 4
-    hidden_state_dim = 50  # = encoder output dim
+    hidden_state_dim = 128  # = encoder output dim
 
     skip_connections = config.skip_connection
 
