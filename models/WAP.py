@@ -6,7 +6,7 @@ from datasets import DatasetManager
 
 
 class WAPDecoder(nn.Module):
-    noise_std = 0.2
+    noise_std = 0.5
 
     encoder_dim = 64
     embedding_dim = 30
