@@ -182,7 +182,11 @@ class CustomDecoder(nn.Module):
 
         self.sequence_pos_embedding = nn.Parameter(
                 nn.init.kaiming_normal_(torch.zeros(1, dataset.max_label_len, self.hidden_state_dim), nonlinearity='relu'))
-        self.self_attn = nn.MultiheadAttention(self.hidden_state_dim, self.self_attention_num_heads, dropout=self.dropout_rate, batch_first=True)
+        if config.attention_on_past:
+            self.self_attn = nn.MultiheadAttention(self.hidden_state_dim, self.self_attention_num_heads, dropout=self.dropout_rate, batch_first=True)
+        else:
+            self.fc_query = nn.Linear(self.hidden_state_dim, self.hidden_state_dim)
+        self.query_layernorm = nn.LayerNorm(self.hidden_state_dim)
 
         # Encoder output (image patch encodings)
         self.image_attn = nn.MultiheadAttention(self.hidden_state_dim, 1, dropout=self.dropout_rate, batch_first=True)
@@ -202,13 +206,18 @@ class CustomDecoder(nn.Module):
         hidden_state = prev_hidden_states[:, -1:, :]
         # shape: (batch_size, 1, hidden_state_dim)
 
-        # add relative position embeddings  TODO: is relative better?
-        prev_hidden_states = prev_hidden_states + self.sequence_pos_embedding[:, -prev_hidden_states.shape[1]:]
-        # shape: (batch_size, prev_seq_len, hidden_state_dim)
+        if config.attention_on_past:
+            # add relative position embeddings  TODO: is relative better?
+            prev_hidden_states = prev_hidden_states + self.sequence_pos_embedding[:, -prev_hidden_states.shape[1]:]
+            # shape: (batch_size, prev_seq_len, hidden_state_dim)
 
-        # get query to make: given the current state, where is the next symbol in the image?
-        query = self.self_attn(hidden_state, prev_hidden_states, prev_hidden_states)[0]
-        # shape: (batch_size, 1, self_attention_dim)
+            # get query to make: given the current state, where is the next symbol in the image?
+            query = self.self_attn(hidden_state, prev_hidden_states, prev_hidden_states)[0]
+            # shape: (batch_size, 1, hidden_state_dim)
+        else:
+            query = self.fc_query(hidden_state)
+            # shape: (batch_size, 1, hidden_state_dim)
+        query = self.query_layernorm(query)
 
         # use the query on the image
         x = self.image_attn(query, encoder_output, encoder_output)[0][:, 0]  # todo: optimize

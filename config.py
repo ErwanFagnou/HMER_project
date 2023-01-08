@@ -18,6 +18,7 @@ gabor_embeddings_size = 32
 project_position_embeddings = True
 
 use_past_true_outputs = True
+attention_on_past = False
 skip_connection = False
 
 # Dataset parameters
