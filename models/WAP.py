@@ -24,7 +24,7 @@ class WAPDecoder(nn.Module):
         self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
 
         # context vector
-        self.attention_logits_1 = nn.Linear(self.encoder_dim, self.attention_dim, bias=False)
+        self.attention_logits_1 = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
         self.attention_logits_2 = nn.Linear(self.hidden_dim, self.attention_dim, bias=False)
         self.attention_activation = nn.Tanh()
         self.attention_proj = nn.Linear(self.attention_dim, 1)
