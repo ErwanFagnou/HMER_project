@@ -17,10 +17,13 @@ class WAPDecoder(nn.Module):
         super().__init__()
         nb_classes = len(dataset.label2id)
 
+        self.dropout = nn.Dropout(self.dropout_rate)
+
         self.embedding = nn.Embedding(nb_classes, self.embedding_dim)
 
         self.rnn_cell = nn.GRUCell(input_size=self.embedding_dim + self.encoder_dim,
                                    hidden_size=self.hidden_dim, bias=False)
+        self.h_batchnorm = nn.BatchNorm1d(self.hidden_dim)
 
         # context vector
         self.attention_logits_1 = nn.Linear(self.encoder_dim, self.attention_dim, bias=False)
@@ -33,8 +36,10 @@ class WAPDecoder(nn.Module):
 
     def forward(self, inputs_embeds, input_ids, stop_at_id=None):
         embedded_seq = self.embedding(input_ids)
+        embedded_seq = self.dropout(embedded_seq)
 
         attention_logits_1 = self.attention_logits_1(inputs_embeds)
+        attention_logits_1 = self.dropout(attention_logits_1)
 
         all_vectors = []
         h_prev = torch.zeros(inputs_embeds.shape[0], self.hidden_dim, device=inputs_embeds.device)
@@ -49,6 +54,7 @@ class WAPDecoder(nn.Module):
             prev_word = embedded_seq[:, t-1, :] if t > 0 else torch.zeros_like(embedded_seq[:, 0, :])
             rnn_input = torch.cat((prev_word, context), dim=1)
             h_t = self.rnn_cell(input=rnn_input, hx=h_prev)
+            h_t = self.h_batchnorm(h_t)
             all_vectors.append(torch.cat([rnn_input, h_t], dim=1))
 
             h_prev = h_t
