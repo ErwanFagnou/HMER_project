@@ -6,7 +6,7 @@ from datasets import DatasetManager
 
 
 class WAPDecoder(nn.Module):
-    noise_std = 0.1
+    noise_std = 0.2
 
     encoder_dim = 64
     embedding_dim = 30
@@ -51,7 +51,9 @@ class WAPDecoder(nn.Module):
             prev_word = embedded_seq[:, t-1, :] if t > 0 else torch.zeros_like(embedded_seq[:, 0, :])
             rnn_input = torch.cat((prev_word, context), dim=1)
             h_t = self.rnn_cell(input=rnn_input, hx=h_prev)
-            h_t = self.h_layernorm(h_t) + torch.randn_like(h_t) * self.noise_std
+            h_t = self.h_layernorm(h_t)
+            if self.training:
+                h_t = h_t + torch.randn_like(h_t) * self.noise_std
 
             all_vectors.append(torch.cat([rnn_input, h_t], dim=1))
 
