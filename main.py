@@ -38,6 +38,9 @@ if __name__ == '__main__':
 
     scheduler_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
+    nb_devices = torch.cuda.device_count()
+    devices = [max(range(nb_devices), key=lambda i: torch.cuda.get_device_properties(i).total_memory)]
+
     trainer_kwargs = {}
     if config.reload_from_checkpoint:
         trainer_kwargs['resume_from_checkpoint'] = config.checkpoint_path
@@ -45,7 +48,7 @@ if __name__ == '__main__':
         logger=wandb_logger,
         callbacks=[val_checkpoint_callback, last_checkpoint_callback, scheduler_callback],
         accelerator=config.trainer_accelerator,
-        devices=1,
+        devices=devices,
         max_epochs=config.epochs,
         accumulate_grad_batches=config.accumulate_grad_batches,
         **trainer_kwargs,
