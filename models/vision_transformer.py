@@ -166,7 +166,7 @@ class CustomDecoder(nn.Module):
 
     # Self-attention
     self_attention_num_heads = 4
-    hidden_state_dim = 64  # = encoder output dim
+    hidden_state_dim = 50  # = encoder output dim
 
     skip_connections = config.skip_connection
 
@@ -175,6 +175,7 @@ class CustomDecoder(nn.Module):
         nb_classes = len(dataset.label2id)
 
         self.layernorm_encoder_outputs = nn.LayerNorm(self.hidden_state_dim)
+        self.encoder_proj = nn.Linear(64, self.hidden_state_dim)
 
         if config.use_past_true_outputs:
             self.token_embeddings = nn.Embedding(nb_classes, self.hidden_state_dim)
@@ -235,6 +236,7 @@ class CustomDecoder(nn.Module):
         # inputs_ids: (batch_size, seq_len)
         batch_size = inputs_embeds.shape[0]
 
+        inputs_embeds = self.encoder_proj(inputs_embeds)
         inputs_embeds = self.layernorm_encoder_outputs(inputs_embeds)
 
         if config.use_past_true_outputs:
