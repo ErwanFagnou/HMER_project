@@ -10,7 +10,7 @@ weights_only = True
 name = "Model_V4"
 
 use_pretrained_encoder = True
-pretrained_path = "final_models/CNN-V2.pt"
+pretrained_path = "final_models/CNN-V3.pt"
 pretrain_learn_encoder_positional_embeddings = True
 
 use_gabor_position_embeddings = False
@@ -18,7 +18,7 @@ gabor_embeddings_size = 32
 project_position_embeddings = True
 
 use_past_true_outputs = True
-attention_on_past = False
+attention_on_past = True
 skip_connection = False
 
 # Dataset parameters
@@ -56,6 +56,10 @@ config_dict = dict(
     weights_only=weights_only,
     use_gabor_position_embeddings=use_gabor_position_embeddings,
     project_position_embeddings=project_position_embeddings,
+    gabor_embeddings_size=gabor_embeddings_size,
+    use_past_true_outputs=use_past_true_outputs,
+    attention_on_past=attention_on_past,
+    skip_connection=skip_connection,
     downscale=downscale,
     additional_tokens=additional_tokens,
     precompute_padding=precompute_padding,

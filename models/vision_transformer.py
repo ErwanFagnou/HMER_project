@@ -165,8 +165,8 @@ class CustomDecoder(nn.Module):
     dropout_rate = 0.2
 
     # Self-attention
-    self_attention_num_heads = 4
-    hidden_state_dim = 128  # = encoder output dim
+    self_attention_num_heads = 1
+    hidden_state_dim = 50  # = encoder output dim
 
     skip_connections = config.skip_connection
 
