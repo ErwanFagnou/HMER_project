@@ -1,4 +1,5 @@
 import math
+from itertools import chain
 
 import torch
 from torch import nn
@@ -305,7 +306,14 @@ class CustomEncoderDecoder(HMERModel):
         self.result = None
 
     def configure_optimizers(self):
-        params = self.decoder.parameters() if config.use_pretrained_encoder else None
+        if config.use_pretrained_encoder:
+            params = self.decoder.parameters()
+            if config.pretrain_learn_encoder_positional_embeddings:
+                pos_embeddings = self.encoder.pos_embeddings
+                new_params = [pos_embeddings] if isinstance(pos_embeddings, nn.Parameter) else pos_embeddings.parameters()
+                params = chain(params, new_params)
+        else:
+            params = None
         return super().configure_optimizers(params)
 
     def forward(self, pixel_values, labels=None, sequence_length=0):
