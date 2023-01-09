@@ -58,7 +58,7 @@ class CNNEncoder(nn.Module):
     # kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
     # pooling = [2, 1, 2, 1, 2, 1, 2, 1]
     total_pooling = 32  # prod of pooling
-    cnn_activation_cls = nn.ReLU
+    cnn_activation_cls = nn.ELU
     fc_activation_cls = nn.ELU
     dropout_rate = 0.2
     use_gabor_position_embeddings = config.use_gabor_position_embeddings
@@ -77,9 +77,9 @@ class CNNEncoder(nn.Module):
         for i in range(len(self.num_channels) - 1):
             layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
             # layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
-            layers.append(self.cnn_activation)
             if self.pooling[i] > 1:
-                layers.append(nn.AvgPool2d(self.pooling[i]))
+                layers.append(nn.MaxPool2d(self.pooling[i]))
+            layers.append(self.cnn_activation)
         self.cnn = nn.Sequential(*layers)
 
         self.dropout = nn.Dropout(self.dropout_rate)
@@ -372,6 +372,6 @@ class CustomEncoderDecoder(HMERModel):
 
         decoded = self.decoder.generate(encoder_outputs=encoder_outputs.last_hidden_state,
                                         input_ids=input_ids,
-                                        max_length=max_length)
+                                        max_length=max_length, num_beams=5)
 
         return decoded

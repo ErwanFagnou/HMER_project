@@ -95,12 +95,24 @@ class WAPDecoder(PreTrainedModel):
         if attention_mask is None:
             attention_mask = input_ids.new_ones(input_ids.shape)
 
-        if past:
-            input_ids = input_ids[:, -1:]
+        # if past:
+        #     input_ids = input_ids[:, -1:]
 
         # remove bos token
-        if input_ids.shape[1] > 1 and input_ids[:, 0].eq(self.config.decoder_start_token_id).all():
-            input_ids = input_ids[:, 1:]
+        # if input_ids.shape[1] > 1:
+        #     input_ids = input_ids[:, 1:]
+        #
+        # # add a new token for generation (because len(pred) == len(input_ids))
+        # input_ids = torch.cat([input_ids, input_ids.new_zeros(input_ids.shape[0], 1)], dim=1)
+
+        # shifts the input ids for generation (the last token is ignored)
+        input_ids = input_ids.roll(shifts=-1, dims=1)
+
+        # if multiple beams
+        if input_ids.shape[0] > encoder_outputs.shape[0]:
+            assert input_ids.shape[0] % encoder_outputs.shape[0] == 0
+            encoder_outputs = encoder_outputs.repeat(input_ids.shape[0] // encoder_outputs.shape[0], 1, 1)
+
         return {
             "input_ids": input_ids,
             "encoder_outputs": encoder_outputs,
