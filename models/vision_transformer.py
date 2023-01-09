@@ -114,14 +114,14 @@ class CNNEncoder(nn.Module):
             return self.pos_embeddings
 
     def forward(self, pixel_values: torch.Tensor, **_):
-        x = self.cnn(pixel_values)
+        cnn_outputs = self.cnn(pixel_values)
         # shape: (batch_size, channels, height, width)
 
-        x = x.permute(0, 2, 3, 1)
+        cnn_outputs = cnn_outputs.permute(0, 2, 3, 1)
         # shape: (batch_size, height,  width, channels)
 
         # dropout
-        x = self.dropout(x)
+        x = self.dropout(cnn_outputs)
 
         # add position embeddings
         x = x + self.get_position_embeddings()[:, :x.shape[1], :x.shape[2]]
@@ -137,7 +137,9 @@ class CNNEncoder(nn.Module):
 
         # x = self.layer_norm(x)
 
-        return ModelOutput(last_hidden_state=x, hidden_states=None, attentions=None)
+        return ModelOutput(last_hidden_state=x,
+                           intermediate_hidden_state=cnn_outputs.flatten(start_dim=1, end_dim=2),
+                           hidden_states=None, attentions=None)
 
 
 def get_decoder(dataset: DatasetManager):
@@ -334,6 +336,11 @@ class CustomEncoderDecoder(HMERModel):
         self.eos_token_id = dataset.label2id['<eos>']
         self.result = None
 
+        # WS-WAP
+        if config.weakly_supervised:
+            self.ws_output_projection = nn.Linear(self.encoder.output_size, self.vocab_size)
+            self.ws_softmax = nn.Softmax(dim=-1)
+
     def configure_optimizers(self):
         if config.use_pretrained_encoder:
             params = self.decoder.parameters()
@@ -352,8 +359,19 @@ class CustomEncoderDecoder(HMERModel):
         encoder_outputs = self.encoder(x)
         decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, labels)
 
-        loss_fct = CrossEntropyLoss()
-        loss = loss_fct(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
+        ce_loss = CrossEntropyLoss()
+        loss = ce_loss(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
+
+        # WS-WAP loss
+        if config.weakly_supervised:
+            ws_logits = self.ws_output_projection(encoder_outputs.intermediate_hidden_state)
+            ws_probas = self.ws_softmax(ws_logits)
+            ws_global_probas = ws_logits.max(dim=-2).values
+
+            target = torch.zeros_like(ws_global_probas)
+            target[torch.arange(target.shape[0]), labels[:, 0]] = 1
+            ws_loss = ce_loss(ws_global_probas, labels[:, 0])
+            loss += config.ws_coefficient * ws_loss
 
         self.result = Seq2SeqLMOutput(
             loss=loss,

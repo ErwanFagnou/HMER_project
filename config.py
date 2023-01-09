@@ -9,6 +9,9 @@ weights_only = True
 # Model
 name = "WAP"
 
+weakly_supervised = True
+ws_coefficient = 0.1
+
 use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
 pretrain_learn_encoder_positional_embeddings = True
@@ -49,6 +52,8 @@ trainer_accelerator = 'gpu' if use_gpu else 'cpu'
 
 config_dict = dict(
     name=name,
+    weakly_supervised=weakly_supervised,
+    ws_coefficient=ws_coefficient,
     use_pretrained_encoder=use_pretrained_encoder,
     pretrained_path=pretrained_path,
     reload_from_checkpoint=reload_from_checkpoint,
