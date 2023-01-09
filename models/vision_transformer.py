@@ -77,7 +77,7 @@ class CNNEncoder(nn.Module):
         layers = []
         for i in range(len(self.num_channels) - 1):
             layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
-            layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
+            # layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
             if self.pooling[i] > 1:
                 layers.append(nn.MaxPool2d(self.pooling[i]))
             layers.append(self.cnn_activation)
