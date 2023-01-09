@@ -359,18 +359,24 @@ class CustomEncoderDecoder(HMERModel):
         encoder_outputs = self.encoder(x)
         decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, labels)
 
-        ce_loss = CrossEntropyLoss()
-        loss = ce_loss(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
+        ce_loss_fn = CrossEntropyLoss()
+        loss = ce_loss_fn(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
 
         # WS-WAP loss
         if config.weakly_supervised:
+            # with probas as input
+            ws_loss_fn = torch.nn.BCELoss()
+
             ws_logits = self.ws_output_projection(encoder_outputs.intermediate_hidden_state)
             ws_probas = self.ws_softmax(ws_logits)
-            ws_global_probas = ws_logits.max(dim=-2).values
+            ws_global_probas = ws_probas.max(dim=-2).values
 
-            target = torch.zeros_like(ws_global_probas)
-            target[torch.arange(target.shape[0]), labels[:, 0]] = 1
-            ws_loss = ce_loss(ws_global_probas, labels[:, 0])
+            # 1 if label is present in the image, 0 otherwise
+            target = torch.zeros((labels.shape[0], self.vocab_size), device=labels.device)
+            for i, label in enumerate(labels):
+                target[i, label] = 1
+
+            ws_loss = ws_loss_fn(ws_global_probas, target)
             loss += config.ws_coefficient * ws_loss
 
         self.result = Seq2SeqLMOutput(
