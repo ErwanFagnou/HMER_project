@@ -28,8 +28,9 @@ class WAPDecoder(nn.Module):
         self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
 
         # context vector
-        self.attention_logits_1 = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
-        self.attention_logits_2 = nn.Linear(self.hidden_dim, self.attention_dim, bias=False)
+        self.attention_encoder_proj = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
+        self.attention_hidden_state_proj = nn.Linear(self.hidden_dim, self.attention_dim, bias=False)
+        self.attention_coverage_proj = nn.Linear(1, self.attention_dim, bias=False)
         self.attention_activation = nn.Tanh()
         self.attention_proj = nn.Linear(self.attention_dim, 1)
 
@@ -40,20 +41,25 @@ class WAPDecoder(nn.Module):
         embedded_seq = self.embedding(input_ids)
         embedded_seq = self.input_dropout(embedded_seq)
 
-        attention_logits_1 = self.attention_logits_1(inputs_embeds)
+        attention_logits_1 = self.attention_encoder_proj(inputs_embeds)
+
+        att_weights_cumsum = torch.zeros(inputs_embeds.shape[0], inputs_embeds.shape[1], 1, device=inputs_embeds.device)
 
         all_vectors = []
         h_prev = torch.zeros(inputs_embeds.shape[0], self.hidden_dim, device=inputs_embeds.device)
         for t in range(embedded_seq.shape[1]):
             # context vector
-            x = attention_logits_1 + self.attention_logits_2(h_prev).unsqueeze(1)
+            x = attention_logits_1 + self.attention_hidden_state_proj(h_prev).unsqueeze(1) \
+                + self.attention_coverage_proj(att_weights_cumsum)
             x = self.attention_activation(x)
             x = self.attention_proj(x)
-            x = torch.softmax(x, dim=1)
-            context = torch.sum(x * inputs_embeds, dim=1)
+            att_weights = torch.softmax(x, dim=1)
+            context = torch.sum(att_weights * inputs_embeds, dim=1)
             context = self.context_layernorm(context)
             if self.training:
                 context = context + torch.randn_like(context) * self.noise_std
+
+            att_weights_cumsum = att_weights_cumsum + att_weights
 
             prev_word = embedded_seq[:, t-1, :] if t > 0 else torch.zeros_like(embedded_seq[:, 0, :])
             rnn_input = torch.cat((prev_word, context), dim=1)
