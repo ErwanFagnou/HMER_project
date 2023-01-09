@@ -1,22 +1,33 @@
 import torch
 from torch import nn
+from transformers import PretrainedConfig, PreTrainedModel, TrOCRConfig
+from transformers.generation_utils import GenerationMixin
 from transformers.utils import ModelOutput
 
 from datasets import DatasetManager
 
 
-class WAPDecoder(nn.Module):
+class WAPDecoder(PreTrainedModel):
     input_dropout_rate = 0.2
     noise_std = 0.25
 
     encoder_dim = 32
     embedding_dim = 256
     hidden_dim = 256
-    attention_dim = 128
+    attention_dim = 50
 
     def __init__(self, dataset: DatasetManager):
-        super().__init__()
         nb_classes = len(dataset.label2id)
+        self.config = TrOCRConfig(
+            vocab_size=nb_classes,
+            decoder_start_token_id=dataset.label2id['<sos>'],
+            bos_token_id=dataset.label2id['<sos>'],
+            eos_token_id=dataset.label2id['<eos>'],
+            pad_token_id=dataset.label2id['<pad>'],
+            # is_decoder=True,
+            # is_encoder_decoder=True,
+        )
+        super().__init__(self.config)
 
         self.input_dropout = nn.Dropout(self.input_dropout_rate)
 
@@ -25,8 +36,8 @@ class WAPDecoder(nn.Module):
         self.rnn_cell = nn.GRUCell(input_size=self.embedding_dim + self.encoder_dim,
                                    hidden_size=self.hidden_dim, bias=False)
         self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
-        # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
-        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=True)
+        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
+        # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=True)
 
         # context vector
         self.attention_encoder_proj = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
@@ -38,16 +49,18 @@ class WAPDecoder(nn.Module):
         # final layers
         self.fc = nn.Linear(self.embedding_dim + self.hidden_dim + self.encoder_dim, nb_classes, bias=True)
 
-    def forward(self, inputs_embeds, input_ids, stop_at_id=None):
+    def forward(self, encoder_outputs, input_ids, stop_at_id=None, **kwargs):
+        # print('input_ids', input_ids.shape)
+        # print('encoder_outputs', encoder_outputs.shape)
         embedded_seq = self.embedding(input_ids)
         embedded_seq = self.input_dropout(embedded_seq)
 
-        attention_logits_1 = self.attention_encoder_proj(inputs_embeds)
+        attention_logits_1 = self.attention_encoder_proj(encoder_outputs)
 
-        att_weights_cumsum = torch.zeros(inputs_embeds.shape[0], inputs_embeds.shape[1], 1, device=inputs_embeds.device)
+        att_weights_cumsum = torch.zeros(encoder_outputs.shape[0], encoder_outputs.shape[1], 1, device=encoder_outputs.device)
 
         all_vectors = []
-        h_prev = torch.zeros(inputs_embeds.shape[0], self.hidden_dim, device=inputs_embeds.device)
+        h_prev = torch.zeros(encoder_outputs.shape[0], self.hidden_dim, device=encoder_outputs.device)
         for t in range(embedded_seq.shape[1]):
             # context vector
             x = attention_logits_1 + self.attention_hidden_state_proj(h_prev).unsqueeze(1) \
@@ -55,7 +68,7 @@ class WAPDecoder(nn.Module):
             x = self.attention_activation(x)
             x = self.attention_proj(x)
             att_weights = torch.softmax(x, dim=1)
-            context = torch.sum(att_weights * inputs_embeds, dim=1)
+            context = torch.sum(att_weights * encoder_outputs, dim=1)
             context = self.context_layernorm(context)
             # if self.training:
             #     context = context + torch.randn_like(context) * self.noise_std
@@ -76,3 +89,19 @@ class WAPDecoder(nn.Module):
         logits = self.fc(torch.stack(all_vectors, dim=1))
 
         return ModelOutput(logits=logits, hidden_states=None, attentions=None)
+
+    def prepare_inputs_for_generation(self, input_ids, encoder_outputs, past=None, attention_mask=None, use_cache=None, **kwargs):
+        # if model is used as a decoder in encoder-decoder model, the decoder attention mask is created on the fly
+        if attention_mask is None:
+            attention_mask = input_ids.new_ones(input_ids.shape)
+
+        if past:
+            input_ids = input_ids[:, -1:]
+
+        # remove bos token
+        if input_ids.shape[1] > 1 and input_ids[:, 0].eq(self.config.decoder_start_token_id).all():
+            input_ids = input_ids[:, 1:]
+        return {
+            "input_ids": input_ids,
+            "encoder_outputs": encoder_outputs,
+        }

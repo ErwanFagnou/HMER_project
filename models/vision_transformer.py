@@ -51,13 +51,13 @@ def get_ViT_encoder(dataset: DatasetManager):
 
 class CNNEncoder(nn.Module):
     output_size = 32
-    # num_channels = [1, 16, 16, 32, 32, output_size]
-    # kernel_sizes = [4, 4, 4, 4, 4]
-    # pooling = [2, 2, 2, 2, 2]
-    num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
-    kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
-    pooling = [2, 1, 2, 1, 2, 1, 2, 1]
-    total_pooling = 16  # prod of pooling
+    num_channels = [1, 16, 16, 32, 32, output_size]
+    kernel_sizes = [4, 4, 4, 4, 4]
+    pooling = [2, 2, 2, 2, 2]
+    # num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
+    # kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
+    # pooling = [2, 1, 2, 1, 2, 1, 2, 1]
+    total_pooling = 32  # prod of pooling
     cnn_activation_cls = nn.ReLU
     fc_activation_cls = nn.ELU
     dropout_rate = 0.2
@@ -76,7 +76,7 @@ class CNNEncoder(nn.Module):
         layers = []
         for i in range(len(self.num_channels) - 1):
             layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
-            layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
+            # layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
             layers.append(self.cnn_activation)
             if self.pooling[i] > 1:
                 layers.append(nn.AvgPool2d(self.pooling[i]))
@@ -240,7 +240,7 @@ class CustomDecoder(nn.Module):
         return next_hidden_state
 
     def forward(self, inputs_embeds, input_ids, stop_at_id=None):
-        # inputs_embeds: (batch_size, height * width, d_model)
+        # encoder_outputs: (batch_size, height * width, d_model)
         # inputs_ids: (batch_size, seq_len)
         batch_size = inputs_embeds.shape[0]
 
@@ -327,6 +327,7 @@ class CustomEncoderDecoder(HMERModel):
         self.decoder = WAPDecoder(dataset)
 
         self.vocab_size = len(dataset.label2id)
+        self.bos_token_id = dataset.label2id['<sos>']
         self.eos_token_id = dataset.label2id['<eos>']
         self.result = None
 
@@ -359,12 +360,18 @@ class CustomEncoderDecoder(HMERModel):
         return loss
 
     @torch.no_grad()
-    def generate(self, pixel_values, max_length=50):
+    def generate(self, pixel_values, max_length=None):
         x = pixel_values.unsqueeze(1)  # add channel dim
 
         encoder_outputs = self.encoder(x)
-        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, max_length, stop_at_id=self.eos_token_id)
-        logits = decoder_outputs.logits
-        return logits.argmax(dim=-1)
+        # decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, stop_at_id=self.eos_token_id)
+        # logits = decoder_outputs.logits
+        # decoded = logits.argmax(dim=-1)
 
+        input_ids = torch.full((pixel_values.shape[0], 1), self.bos_token_id, dtype=torch.long, device=pixel_values.device)
 
+        decoded = self.decoder.generate(encoder_outputs=encoder_outputs.last_hidden_state,
+                                        input_ids=input_ids,
+                                        max_length=max_length)
+
+        return decoded

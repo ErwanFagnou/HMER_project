@@ -140,16 +140,17 @@ if __name__ == '__main__':
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V2-pcfs4qv7/epoch=499-step=69500-last.ckpt", dataset=crohme)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V3-bm63svkd/epoch=499-step=69500-last.ckpt", dataset=crohme)
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/Model_V4-3khbx46l/epoch=54-step=07645-last.ckpt", dataset=crohme)
+    model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WAP-2f0odbz4/epoch=499-step=69500-last.ckpt", dataset=crohme)
 
     # model = torch.load("final_models/CNN-V1.pt")
-    model = torch.load("final_models/CNN-V2.pt")
+    # model = torch.load("final_models/CNN-V2.pt")
 
     model = model.to(config.device)
     model.eval()
 
-    # loader = crohme.train_loader
-    # # loader = crohme.test_loaders["TEST14"]
-    # show_generate(model, loader)
+    loader = crohme.train_loader
+    # loader = crohme.test_loaders["TEST14"]
+    show_generate(model, loader)
 
     # show_pos_embeddings(model)
 
