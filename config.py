@@ -10,7 +10,7 @@ weights_only = True
 name = "WAP"
 
 weakly_supervised = True
-ws_coefficient = 0.1
+ws_coefficient = 0.01
 
 use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
