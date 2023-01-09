@@ -10,7 +10,7 @@ weights_only = True
 name = "WAP"
 
 weakly_supervised = True
-ws_coefficient = 0.01
+ws_coefficient = 0.5
 
 use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
@@ -34,7 +34,7 @@ include_sos_and_eos = False  # taken care of by transformer
 # Training parameters
 epochs = 500
 effective_batch_size = 64
-batch_size = 64
+batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
 opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)
