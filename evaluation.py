@@ -145,6 +145,7 @@ if __name__ == '__main__':
 
     # model = torch.load("final_models/CNN-V1.pt")
     # model = torch.load("final_models/CNN-V2.pt")
+    model = torch.load("final_models/WAP-1_updated.pt")
 
     model = model.to(config.device)
     model.eval()

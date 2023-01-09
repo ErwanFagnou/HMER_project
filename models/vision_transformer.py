@@ -372,6 +372,6 @@ class CustomEncoderDecoder(HMERModel):
 
         decoded = self.decoder.generate(encoder_outputs=encoder_outputs.last_hidden_state,
                                         input_ids=input_ids,
-                                        max_length=max_length, num_beams=5)
+                                        max_length=max_length)
 
         return decoded
