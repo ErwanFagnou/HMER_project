@@ -13,7 +13,7 @@ use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
 pretrain_learn_encoder_positional_embeddings = True
 
-use_gabor_position_embeddings = False
+use_gabor_position_embeddings = True
 gabor_embeddings_size = 32
 project_position_embeddings = True
 
