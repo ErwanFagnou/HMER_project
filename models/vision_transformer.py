@@ -53,11 +53,12 @@ class CNNEncoder(nn.Module):
     output_size = 32
     num_channels = [1, 16, 16, 32, 32, output_size]
     kernel_sizes = [4, 4, 4, 4, 4]
-    pooling = [2, 2, 2, 2, 2]
+    pooling = [2, 2, 2, 2, 1]
     # num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
     # kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
     # pooling = [2, 1, 2, 1, 2, 1, 2, 1]
-    total_pooling = 32  # prod of pooling
+    dropouts = [0, 0, 0, 0.1, 0.1, 0.1]
+    total_pooling = 16  # prod of pooling
     cnn_activation_cls = nn.ELU
     fc_activation_cls = nn.ELU
     dropout_rate = 0.2
@@ -76,10 +77,12 @@ class CNNEncoder(nn.Module):
         layers = []
         for i in range(len(self.num_channels) - 1):
             layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
-            # layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
+            layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
             if self.pooling[i] > 1:
-                layers.append(nn.MaxPool2d(self.pooling[i]))
+                layers.append(nn.AvgPool2d(self.pooling[i]))
             layers.append(self.cnn_activation)
+            if self.dropouts[i] > 0:
+                layers.append(nn.Dropout(self.dropouts[i]))
         self.cnn = nn.Sequential(*layers)
 
         self.dropout = nn.Dropout(self.dropout_rate)

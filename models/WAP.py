@@ -12,7 +12,7 @@ class WAPDecoder(PreTrainedModel):
     noise_std = 0.25
 
     encoder_dim = 32
-    embedding_dim = 256
+    embedding_dim = 64
     hidden_dim = 256
     attention_dim = 50
 
@@ -55,6 +55,7 @@ class WAPDecoder(PreTrainedModel):
         embedded_seq = self.embedding(input_ids)
         embedded_seq = self.input_dropout(embedded_seq)
 
+        encoder_outputs = self.input_dropout(encoder_outputs)
         attention_logits_1 = self.attention_encoder_proj(encoder_outputs)
 
         att_weights_cumsum = torch.zeros(encoder_outputs.shape[0], encoder_outputs.shape[1], 1, device=encoder_outputs.device)
