@@ -8,8 +8,8 @@ from datasets import DatasetManager
 
 
 class WAPDecoder(PreTrainedModel):
-    input_dropout_rate = 0.2
-    noise_std = 0.25
+    input_dropout_rate = 0.4
+    # noise_std = 0.25
 
     encoder_dim = 32
     embedding_dim = 64
@@ -34,10 +34,11 @@ class WAPDecoder(PreTrainedModel):
         self.embedding = nn.Embedding(nb_classes, self.embedding_dim)
 
         self.rnn_cell = nn.GRUCell(input_size=self.embedding_dim + self.encoder_dim,
-                                   hidden_size=self.hidden_dim, bias=False)
-        self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
-        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
-        # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=True)
+                                   hidden_size=self.hidden_dim, bias=True)
+        # self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
+        self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=True)
+        # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
+        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=True)
 
         # context vector
         self.attention_encoder_proj = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
@@ -80,8 +81,8 @@ class WAPDecoder(PreTrainedModel):
             rnn_input = torch.cat((prev_word, context), dim=1)
             h_t = self.rnn_cell(input=rnn_input, hx=h_prev)
             h_t = self.h_layernorm(h_t)
-            if self.training:
-                h_t = h_t + torch.randn_like(h_t) * self.noise_std
+            # if self.training:
+            #     h_t = h_t + torch.randn_like(h_t) * self.noise_std
 
             all_vectors.append(torch.cat([rnn_input, h_t], dim=1))
 
