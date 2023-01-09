@@ -7,11 +7,11 @@ from datasets import DatasetManager
 
 class WAPDecoder(nn.Module):
     input_dropout_rate = 0.2
-    noise_std = 0.5
+    noise_std = 0.25
 
     encoder_dim = 32
-    embedding_dim = 256
-    hidden_dim = 256
+    embedding_dim = 128
+    hidden_dim = 128
     attention_dim = 50
 
     def __init__(self, dataset: DatasetManager):
@@ -25,7 +25,7 @@ class WAPDecoder(nn.Module):
         self.rnn_cell = nn.GRUCell(input_size=self.embedding_dim + self.encoder_dim,
                                    hidden_size=self.hidden_dim, bias=False)
         self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
-        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
+        # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
 
         # context vector
         self.attention_encoder_proj = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
@@ -55,9 +55,9 @@ class WAPDecoder(nn.Module):
             x = self.attention_proj(x)
             att_weights = torch.softmax(x, dim=1)
             context = torch.sum(att_weights * inputs_embeds, dim=1)
-            context = self.context_layernorm(context)
-            if self.training:
-                context = context + torch.randn_like(context) * self.noise_std
+            # context = self.context_layernorm(context)
+            # if self.training:
+            #     context = context + torch.randn_like(context) * self.noise_std
 
             att_weights_cumsum = att_weights_cumsum + att_weights
 

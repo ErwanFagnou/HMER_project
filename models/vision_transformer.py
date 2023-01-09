@@ -51,9 +51,14 @@ def get_ViT_encoder(dataset: DatasetManager):
 
 class CNNEncoder(nn.Module):
     output_size = 32
-    num_channels = [1, 16, 16, 32, 32, output_size]
-    kernel_sizes = [4, 4, 4, 4, 4]
-    cnn_activation_cls = nn.ELU
+    # num_channels = [1, 16, 16, 32, 32, output_size]
+    # kernel_sizes = [4, 4, 4, 4, 4]
+    # pooling = [2, 2, 2, 2, 2]
+    num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
+    kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
+    pooling = [2, 1, 2, 1, 2, 1, 2, 1]
+    total_pooling = 16  # prod of pooling
+    cnn_activation_cls = nn.ReLU
     fc_activation_cls = nn.ELU
     dropout_rate = 0.2
     use_gabor_position_embeddings = config.use_gabor_position_embeddings
@@ -71,14 +76,16 @@ class CNNEncoder(nn.Module):
         layers = []
         for i in range(len(self.num_channels) - 1):
             layers.append(nn.Conv2d(self.num_channels[i], self.num_channels[i + 1], self.kernel_sizes[i], padding='same'))
-            layers.append(nn.MaxPool2d(2))
+            layers.append(nn.BatchNorm2d(self.num_channels[i+1]))
             layers.append(self.cnn_activation)
+            if self.pooling[i] > 1:
+                layers.append(nn.AvgPool2d(self.pooling[i]))
         self.cnn = nn.Sequential(*layers)
 
         self.dropout = nn.Dropout(self.dropout_rate)
 
-        grid_rows = math.ceil(dataset.max_img_h / (2 ** len(self.kernel_sizes)))
-        grid_cols = math.ceil(dataset.max_img_w / (2 ** len(self.kernel_sizes)))
+        grid_rows = math.ceil(dataset.max_img_h / self.total_pooling)
+        grid_cols = math.ceil(dataset.max_img_w / self.total_pooling)
         if self.use_gabor_position_embeddings:
             emb_size = config.gabor_embeddings_size if config.project_position_embeddings else self.output_size
             self.pos_embeddings = GaborPositionEmbeddings(grid_rows, grid_cols, emb_size,
