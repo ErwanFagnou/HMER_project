@@ -97,7 +97,8 @@ def metrics(dataset, pred_seq, true_seq):
     metrics["error_tol_2"] = metrics["num_errors"] <= 2
 
     # levenshtein distance, with number of substitutions, insertions and deletions
-    metrics["WER"], metrics["WER_sub"], metrics["WER_ins"], metrics["WER_del"] = edit_distance(pred_seq, true_seq)
+    metrics["Levenshtein"], metrics["WER_sub"], metrics["WER_ins"], metrics["WER_del"] = edit_distance(pred_seq, true_seq)
+    metrics["WER"] = metrics["Levenshtein"] / len(true_seq)
 
     # print(pred_seq, true_seq)
     # print(metrics)
