@@ -9,7 +9,7 @@ from datasets import DatasetManager
 
 class WAPDecoder(PreTrainedModel):
     dropout_rate = 0.2
-    # noise_std = 0.25
+    noise_std = 0.3
 
     encoder_dim = 32
     embedding_dim = 64
