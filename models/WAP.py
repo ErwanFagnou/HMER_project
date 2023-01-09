@@ -8,7 +8,7 @@ from datasets import DatasetManager
 
 
 class WAPDecoder(PreTrainedModel):
-    input_dropout_rate = 0.4
+    dropout_rate = 0.2
     # noise_std = 0.25
 
     encoder_dim = 32
@@ -29,16 +29,16 @@ class WAPDecoder(PreTrainedModel):
         )
         super().__init__(self.config)
 
-        self.input_dropout = nn.Dropout(self.input_dropout_rate)
+        self.dropout = nn.Dropout(self.dropout_rate)
 
         self.embedding = nn.Embedding(nb_classes, self.embedding_dim)
 
         self.rnn_cell = nn.GRUCell(input_size=self.embedding_dim + self.encoder_dim,
                                    hidden_size=self.hidden_dim, bias=True)
         # self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
-        self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=True)
+        self.h_layernorm = nn.LayerNorm(self.hidden_dim, elementwise_affine=False)
         # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=False)
-        self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=True)
+        # self.context_layernorm = nn.LayerNorm(self.encoder_dim, elementwise_affine=True)
 
         # context vector
         self.attention_encoder_proj = nn.Linear(self.encoder_dim, self.attention_dim, bias=True)
@@ -54,9 +54,9 @@ class WAPDecoder(PreTrainedModel):
         # print('input_ids', input_ids.shape)
         # print('encoder_outputs', encoder_outputs.shape)
         embedded_seq = self.embedding(input_ids)
-        embedded_seq = self.input_dropout(embedded_seq)
+        embedded_seq = self.dropout(embedded_seq)
 
-        encoder_outputs = self.input_dropout(encoder_outputs)
+        # encoder_outputs = self.input_dropout(encoder_outputs)
         attention_logits_1 = self.attention_encoder_proj(encoder_outputs)
 
         att_weights_cumsum = torch.zeros(encoder_outputs.shape[0], encoder_outputs.shape[1], 1, device=encoder_outputs.device)
@@ -68,10 +68,11 @@ class WAPDecoder(PreTrainedModel):
             x = attention_logits_1 + self.attention_hidden_state_proj(h_prev).unsqueeze(1) \
                 + self.attention_coverage_proj(att_weights_cumsum)
             x = self.attention_activation(x)
+            x = self.dropout(x)
             x = self.attention_proj(x)
             att_weights = torch.softmax(x, dim=1)
             context = torch.sum(att_weights * encoder_outputs, dim=1)
-            context = self.context_layernorm(context)
+            # context = self.context_layernorm(context)
             # if self.training:
             #     context = context + torch.randn_like(context) * self.noise_std
 
@@ -81,8 +82,8 @@ class WAPDecoder(PreTrainedModel):
             rnn_input = torch.cat((prev_word, context), dim=1)
             h_t = self.rnn_cell(input=rnn_input, hx=h_prev)
             h_t = self.h_layernorm(h_t)
-            # if self.training:
-            #     h_t = h_t + torch.randn_like(h_t) * self.noise_std
+            if self.training:
+                h_t = h_t + torch.randn_like(h_t) * self.noise_std
 
             all_vectors.append(torch.cat([rnn_input, h_t], dim=1))
 
