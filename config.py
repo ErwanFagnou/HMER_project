@@ -7,7 +7,7 @@ checkpoint_path = "checkpoints/Model_V4-1j2620gu/epoch=205-step=28634-last.ckpt"
 weights_only = True
 
 # Model
-name = "WAP"
+name = "WS-WAP"
 
 weakly_supervised = True
 ws_coefficient = 0.5
@@ -16,7 +16,7 @@ use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
 pretrain_learn_encoder_positional_embeddings = True
 
-use_gabor_position_embeddings = True
+use_gabor_position_embeddings = False
 gabor_embeddings_size = 32
 project_position_embeddings = True
 
