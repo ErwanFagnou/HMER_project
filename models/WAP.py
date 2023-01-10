@@ -1,5 +1,3 @@
-import gc
-
 import torch
 from torch import nn
 from transformers import PretrainedConfig, PreTrainedModel, TrOCRConfig
@@ -74,13 +72,10 @@ class WAPDecoder(PreTrainedModel):
             x = self.dropout(x)
             x = self.attention_proj(x)
             att_weights = torch.softmax(x, dim=1)
-            gc.collect()  # clean memory
             context = torch.sum(att_weights * encoder_outputs, dim=1)
             context = self.context_layernorm(context)
             if self.training:
                 context = context + torch.randn_like(context) * self.noise_std
-
-            gc.collect()  # clean memory
 
             att_weights_cumsum = att_weights_cumsum + att_weights
 
