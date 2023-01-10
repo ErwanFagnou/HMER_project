@@ -2,10 +2,22 @@ import pandas
 import torch
 import matplotlib.pyplot as plt
 import tqdm
+from torch import nn
 
 import config
 import datasets
 from models.vision_transformer import TrOCR, CustomEncoderDecoder
+
+
+def pred_to_str(pred):
+    s = ""
+    for i in pred:
+        if i not in [crohme.label2id["<pad>"], crohme.label2id["<sos>"], crohme.label2id["<eos>"]]:
+            word = crohme.id2label[i]
+            if len(word) >1:
+                word = " " + word + " "
+            s += word
+    return s
 
 
 def show_generate(model, loader):
@@ -13,19 +25,22 @@ def show_generate(model, loader):
     with torch.no_grad():
         for imgs, true_outputs in loader:
             for img, true_output in zip(imgs, true_outputs):
-                print(img.shape, true_output.shape)
-                print("True:", [crohme.id2label[i] for i in true_output.cpu().numpy()])
 
                 inputs = img.unsqueeze(0).to(config.device).float()
 
                 # model(inputs, true_output)
                 # print(model.result)
                 # input("pause")
+                max_len = round(true_output.shape[0] * 1.5)
+                result = model.generate(inputs, max_length=max_len)[0]
+                print("\nTrue:", pred_to_str(true_output.cpu().numpy()))
+                print("Pred:",  pred_to_str(result.cpu().numpy()))
 
-                result = model.generate(inputs)[0]
-                print("Pred:", [crohme.id2label[i] for i in result.cpu().numpy()])
+                s1 = pred_to_str(true_output.cpu().numpy())
+                s2 = pred_to_str(result.cpu().numpy())
 
                 plt.imshow(img)
+                plt.title(f"True: {s1}\nPred: {s2}")
                 plt.show()
 
 
@@ -141,19 +156,27 @@ if __name__ == '__main__':
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V2-pcfs4qv7/epoch=499-step=69500-last.ckpt", dataset=crohme)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V3-bm63svkd/epoch=499-step=69500-last.ckpt", dataset=crohme)
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/Model_V4-3khbx46l/epoch=54-step=07645-last.ckpt", dataset=crohme)
-    model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WAP-2f0odbz4/epoch=499-step=69500-last.ckpt", dataset=crohme)
+    # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WAP-2f0odbz4/epoch=499-step=69500-last.ckpt", dataset=crohme)
+    # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WS-WAP-1ugpg6mc/epoch=499-step=69500-last.ckpt", dataset=crohme)
+
+    # torch.save(model, "final_models/WAP-2.pt")
 
     # model = torch.load("final_models/CNN-V1.pt")
     # model = torch.load("final_models/CNN-V2.pt")
-    model = torch.load("final_models/WAP-1_updated.pt")
+    # model = torch.load("final_models/CNN-V3.pt")
+
+    # model = torch.load("final_models/WAP-1_updated.pt")
+    # model.decoder.dropout = nn.Dropout(0)
+
+    model = torch.load("final_models/WAP-2.pt")
 
     model = model.to(config.device)
     model.eval()
 
-    loader = crohme.train_loader
+    # # loader = crohme.train_loader
     # loader = crohme.test_loaders["TEST14"]
-    show_generate(model, loader)
+    # show_generate(model, loader)
 
-    # show_pos_embeddings(model)
+    show_pos_embeddings(model)
 
     compute_model_metrics(model, crohme)
