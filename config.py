@@ -7,7 +7,7 @@ checkpoint_path = "checkpoints/Model_V4-1j2620gu/epoch=205-step=28634-last.ckpt"
 weights_only = True
 
 # Model
-name = "WAP-Gabor"
+name = "WAP"
 
 weakly_supervised = False
 detach_encoder_cnn = False
@@ -35,7 +35,7 @@ include_sos_and_eos = False  # taken care of by transformer
 # Training parameters
 epochs = 500
 effective_batch_size = 64
-batch_size = 16
+batch_size = 32
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
 opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)  # TODO
