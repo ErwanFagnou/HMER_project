@@ -11,10 +11,10 @@ class WAPDecoder(PreTrainedModel):
     dropout_rate = 0.4
     noise_std = 0.5
 
-    encoder_dim = 32
+    encoder_dim = 256
     embedding_dim = 256
     hidden_dim = 256
-    attention_dim = 50
+    attention_dim = 256
 
     def __init__(self, dataset: DatasetManager):
         nb_classes = len(dataset.label2id)

@@ -50,8 +50,8 @@ def get_ViT_encoder(dataset: DatasetManager):
 
 
 class CNNEncoder(nn.Module):
-    output_size = 32
-    num_channels = [1, 16, 16, 32, 32, output_size]
+    output_size = 256
+    num_channels = [1, 16, 32, 64, 128, output_size]
     kernel_sizes = [4, 4, 4, 4, 4]
     pooling = [2, 2, 2, 2, 2]
     # num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
