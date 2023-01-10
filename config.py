@@ -7,11 +7,11 @@ checkpoint_path = "checkpoints/Model_V4-1j2620gu/epoch=205-step=28634-last.ckpt"
 weights_only = True
 
 # Model
-name = "WAP"
+name = "WS-WAP"
 
-weakly_supervised = False
+weakly_supervised = True
 detach_encoder_cnn = False
-ws_coefficient = 0.1
+ws_coefficient = 0.5
 
 use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
