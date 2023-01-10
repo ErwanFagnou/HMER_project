@@ -55,7 +55,8 @@ if __name__ == '__main__':
     scheduler_callback = pl.callbacks.LearningRateMonitor(logging_interval="epoch")
 
     nb_devices = torch.cuda.device_count()
-    devices = [max(range(nb_devices), key=lambda i: torch.cuda.get_device_properties(i).total_memory)]
+    # devices = [max(range(nb_devices), key=lambda i: torch.cuda.get_device_properties(i).total_memory)]
+    devices = [2]
 
     trainer_kwargs = {}
     if config.reload_from_checkpoint and not config.weights_only:
