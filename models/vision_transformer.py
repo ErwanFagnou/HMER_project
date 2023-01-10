@@ -57,7 +57,7 @@ class CNNEncoder(nn.Module):
     # num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
     # kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
     # pooling = [2, 1, 2, 1, 2, 1, 2, 1]
-    dropouts = [0.2, 0.2, 0.2, 0.2, 0.2, 0.2]
+    dropouts = [0, 0, 0, 0, 0, 0]
     total_pooling = 16  # prod of pooling
     cnn_activation_cls = nn.ELU
     fc_activation_cls = nn.ELU
