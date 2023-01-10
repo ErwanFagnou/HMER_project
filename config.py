@@ -7,7 +7,7 @@ checkpoint_path = "checkpoints/Model_V4-1j2620gu/epoch=205-step=28634-last.ckpt"
 weights_only = True
 
 # Model
-name = "WS-WAP"
+name = "WAP-Gabor"
 
 weakly_supervised = False
 detach_encoder_cnn = False
@@ -17,8 +17,8 @@ use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
 pretrain_learn_encoder_positional_embeddings = True
 
-use_gabor_position_embeddings = False
-gabor_embeddings_size = 32
+use_gabor_position_embeddings = True
+gabor_embeddings_size = 128
 project_position_embeddings = True
 
 use_past_true_outputs = True
@@ -35,10 +35,10 @@ include_sos_and_eos = False  # taken care of by transformer
 # Training parameters
 epochs = 500
 effective_batch_size = 64
-batch_size = 16
+batch_size = 64
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
-opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)
+opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)  # TODO
 # optimizer = torch.optim.SGD
 # opt_kwargs = dict(lr=1e-4, momentum=0.9, weight_decay=1e-5)
 lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
