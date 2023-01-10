@@ -69,5 +69,6 @@ if __name__ == '__main__':
         max_epochs=config.epochs,
         accumulate_grad_batches=config.accumulate_grad_batches,
         **trainer_kwargs,
+        precision=16,
     )
     trainer.fit(model=model, train_dataloaders=crohme.train_loader, val_dataloaders=crohme.test_loaders['TEST14'])
