@@ -35,7 +35,7 @@ include_sos_and_eos = False  # taken care of by transformer
 # Training parameters
 epochs = 500
 effective_batch_size = 64
-batch_size = 64
+batch_size = 16
 accumulate_grad_batches = effective_batch_size // batch_size
 optimizer = torch.optim.Adam
 opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)  # TODO
