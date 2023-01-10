@@ -120,6 +120,9 @@ class CNNEncoder(nn.Module):
         cnn_outputs = cnn_outputs.permute(0, 2, 3, 1)
         # shape: (batch_size, height,  width, channels)
 
+        if config.weakly_supervised and config.detach_encoder_cnn:
+            cnn_outputs = cnn_outputs.detach()
+
         # dropout
         x = self.dropout(cnn_outputs)
 
@@ -359,7 +362,7 @@ class CustomEncoderDecoder(HMERModel):
         encoder_outputs = self.encoder(x)
         decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, labels)
 
-        ce_loss_fn = CrossEntropyLoss()
+        ce_loss_fn = CrossEntropyLoss(label_smoothing=config.label_smoothing)
         loss = ce_loss_fn(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
 
         # WS-WAP loss

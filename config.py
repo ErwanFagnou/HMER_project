@@ -9,8 +9,9 @@ weights_only = True
 # Model
 name = "WS-WAP"
 
-weakly_supervised = True
-ws_coefficient = 0.5
+weakly_supervised = False
+detach_encoder_cnn = False
+ws_coefficient = 0.1
 
 use_pretrained_encoder = False
 pretrained_path = "final_models/CNN-V3.pt"
@@ -43,6 +44,8 @@ opt_kwargs = dict(lr=1e-3, weight_decay=1e-5)
 lr_scheduler = torch.optim.lr_scheduler.CosineAnnealingLR
 lr_scheduler_kwargs = dict(T_max=epochs, eta_min=1e-6)
 
+label_smoothing = 0.1
+
 
 # loss_fn = nn.CrossEntropyLoss(reduction='sum', ignore_index=additional_tokens['<pad>'])
 
@@ -54,6 +57,7 @@ config_dict = dict(
     name=name,
     weakly_supervised=weakly_supervised,
     ws_coefficient=ws_coefficient,
+    detach_encoder_cnn=detach_encoder_cnn,
     use_pretrained_encoder=use_pretrained_encoder,
     pretrained_path=pretrained_path,
     reload_from_checkpoint=reload_from_checkpoint,
@@ -76,5 +80,8 @@ config_dict = dict(
     accumulate_grad_batches=accumulate_grad_batches,
     optimizer=optimizer,
     opt_kwargs=opt_kwargs,
+    lr_scheduler=lr_scheduler,
+    lr_scheduler_kwargs=lr_scheduler_kwargs,
+    label_smoothing=label_smoothing,
     **opt_kwargs,
 )

@@ -8,7 +8,7 @@ from datasets import DatasetManager
 
 
 class WAPDecoder(PreTrainedModel):
-    dropout_rate = 0.2
+    dropout_rate = 0.4
     noise_std = 0.5
 
     encoder_dim = 32
@@ -65,8 +65,9 @@ class WAPDecoder(PreTrainedModel):
         h_prev = torch.zeros(encoder_outputs.shape[0], self.hidden_dim, device=encoder_outputs.device)
         for t in range(embedded_seq.shape[1]):
             # context vector
+            att_weights_cumsum_dropout = self.dropout(att_weights_cumsum)
             x = attention_logits_1 + self.attention_hidden_state_proj(h_prev).unsqueeze(1) \
-                + self.attention_coverage_proj(att_weights_cumsum)
+                + self.attention_coverage_proj(att_weights_cumsum_dropout)
             x = self.attention_activation(x)
             x = self.dropout(x)
             x = self.attention_proj(x)
