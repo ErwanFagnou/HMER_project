@@ -390,7 +390,7 @@ class CustomEncoderDecoder(HMERModel):
         return loss
 
     @torch.no_grad()
-    def generate(self, pixel_values, max_length=None):
+    def generate(self, pixel_values, **kwargs):
         x = pixel_values.unsqueeze(1)  # add channel dim
 
         encoder_outputs = self.encoder(x)
@@ -402,6 +402,6 @@ class CustomEncoderDecoder(HMERModel):
 
         decoded = self.decoder.generate(encoder_outputs=encoder_outputs.last_hidden_state,
                                         input_ids=input_ids,
-                                        max_length=max_length)
+                                        **kwargs)
 
         return decoded

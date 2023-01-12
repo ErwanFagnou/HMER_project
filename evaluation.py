@@ -20,28 +20,28 @@ def pred_to_str(pred):
     return s
 
 
-def show_generate(model, loader):
-
+def show_generate(model, loader, **kwargs):
+    model.eval()
     with torch.no_grad():
-        for imgs, true_outputs in loader:
-            for img, true_output in zip(imgs, true_outputs):
+        for img, true_output in loader.dataset:
+            inputs = img.unsqueeze(0).float().to(config.device)
 
-                inputs = img.unsqueeze(0).to(config.device).float()
+            # model(inputs, true_output)
+            # print(model.result)
+            # input("pause")
+            max_len = max(10, round(true_output.shape[0] * 1.5))
+            print(inputs.shape, inputs.mean(), true_output.shape, max_len, num_beams, kwargs)
+            result = model.generate(inputs, max_length=max_len, **kwargs)[0]
+            print("\nTrue:", pred_to_str(true_output.cpu().numpy()))
+            print("Pred:",  pred_to_str(result.cpu().numpy()))
 
-                # model(inputs, true_output)
-                # print(model.result)
-                # input("pause")
-                max_len = round(true_output.shape[0] * 1.5)
-                result = model.generate(inputs, max_length=max_len)[0]
-                print("\nTrue:", pred_to_str(true_output.cpu().numpy()))
-                print("Pred:",  pred_to_str(result.cpu().numpy()))
+            s1 = pred_to_str(true_output.cpu().numpy())
+            s2 = pred_to_str(result.cpu().numpy())
 
-                s1 = pred_to_str(true_output.cpu().numpy())
-                s2 = pred_to_str(result.cpu().numpy())
-
-                plt.imshow(img)
-                plt.title(f"True: {s1}\nPred: {s2}")
-                plt.show()
+            plt.imshow(img)
+            plt.title(f"True: {s1}\nPred: {s2}")
+            plt.show()
+            # break
 
 
 def show_pos_embeddings(model: TrOCR):
@@ -107,39 +107,47 @@ def metrics(dataset, pred_seq, true_seq):
 
     # number of errors
     metrics["num_errors"] = sum([p != t for p, t in zip(pred_seq, true_seq)]) + abs(len(pred_seq) - len(true_seq))
-    metrics["error_tol_0"] = metrics["num_errors"] == 0
-    metrics["error_tol_1"] = metrics["num_errors"] <= 1
-    metrics["error_tol_2"] = metrics["num_errors"] <= 2
+    metrics["error_tol_0"] = (metrics["num_errors"] == 0) * 100
+    metrics["error_tol_1"] = (metrics["num_errors"] <= 1) * 100
+    metrics["error_tol_2"] = (metrics["num_errors"] <= 2) * 100
 
     # levenshtein distance, with number of substitutions, insertions and deletions
     metrics["Levenshtein"], metrics["WER_sub"], metrics["WER_ins"], metrics["WER_del"] = edit_distance(pred_seq, true_seq)
-    metrics["WER"] = metrics["Levenshtein"] / len(true_seq)
+    metrics["WER"] = metrics["Levenshtein"] / len(true_seq) * 100
 
-    # print(pred_seq, true_seq)
+    # print("true", pred_to_str(true_seq))
+    # print("pred", pred_to_str(pred_seq))
     # print(metrics)
-    # input()
 
     return metrics
 
 
-def compute_model_metrics(model: TrOCR, dataset: datasets.DatasetManager):
+def compute_model_metrics(model: TrOCR, dataset: datasets.DatasetManager, num_beams=None, **generate_kwargs):
     model.eval()
     with torch.no_grad():
         for test_name, test_loader in dataset.test_loaders.items():
             df = pandas.DataFrame(columns=["pred_len", "true_len", "num_errors", "error_tol_0", "error_tol_1", "error_tol_2", "WER", "WER_sub", "WER_ins", "WER_del"])
-            for batch in tqdm.tqdm(test_loader, desc=f"Computing metrics for {test_name}"):
-                imgs, outputs = batch
-                imgs = imgs.float().to(config.device)
-                outputs = outputs.to(config.device)
+            # loop over each sample is slower than with batches, but it is better for reproducibility
+            for img, output in tqdm.tqdm(test_loader.dataset, desc=f"Computing metrics for {test_name}"):
+                # pad image to dataset max size
+                padded = torch.zeros((dataset.max_img_h, dataset.max_img_w), dtype=torch.float32)
+                padded[:img.shape[0], :img.shape[1]] = img
+                img = padded
 
-                max_len = round(outputs.shape[1] * 1.5)
-                decoded = model.generate(imgs, max_length=max_len)
+                inputs = img.unsqueeze(0).float().to(config.device)
+                output = [int(i) for i in output if int(i) not in {dataset.label2id["<pad>"], dataset.label2id["<sos>"], dataset.label2id["<eos>"]}]
 
-                for pred, true in zip(decoded.detach().cpu().numpy(), outputs.detach().cpu().numpy()):
-                    metrics_dict = metrics(dataset, pred, true)
-                    df = df.append(metrics_dict, ignore_index=True)
+                max_len = max(10, round(len(output) * 1.5))
+                # print(inputs.shape, max_len, output)
+                # print(inputs.shape, inputs.mean(), max_len, num_beams, generate_kwargs)
+                decoded = model.generate(inputs, max_length=max_len, num_beams=num_beams, **generate_kwargs)
+
+                metrics_dict = metrics(dataset, decoded[0].detach().cpu().numpy(), output)
+                df = df.append(metrics_dict, ignore_index=True)
+            #     break
             print(test_name)
-            print(df.mean())
+            print(df.mean().round(2))
+            # break
 
 
 if __name__ == '__main__':
@@ -165,18 +173,19 @@ if __name__ == '__main__':
     # model = torch.load("final_models/CNN-V2.pt")
     # model = torch.load("final_models/CNN-V3.pt")
 
-    # model = torch.load("final_models/WAP-1_updated.pt")
-    # model.decoder.dropout = nn.Dropout(0)
+    model = torch.load("final_models/WAP-1_updated.pt")
+    model.decoder.dropout = nn.Dropout(0)
 
-    model = torch.load("final_models/WAP-2.pt")
+    # model = torch.load("final_models/WAP-2.pt")
 
     model = model.to(config.device)
     model.eval()
+    num_beams = 10
 
-    # # loader = crohme.train_loader
-    # loader = crohme.test_loaders["TEST14"]
-    # show_generate(model, loader)
+    # loader = crohme.train_loader
+    loader = crohme.test_loaders["TEST14"]
+    show_generate(model, loader, num_beams=num_beams)
 
-    show_pos_embeddings(model)
+    # show_pos_embeddings(model)
 
-    compute_model_metrics(model, crohme)
+    compute_model_metrics(model, crohme, num_beams=num_beams)

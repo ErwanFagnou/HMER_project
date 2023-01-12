@@ -186,7 +186,6 @@ class DatasetManager:
             name: (preprocess_image(img, max_img_w, max_img_h, downscale), preprocess_labels(labels, self.label2id, max_label_len, include_sos_and_eos))
             for name, (img, labels) in train_dataset.items()}
         for name, dataset in test_datasets.items():
-            max_label_len = max([len(labels) for _, labels in dataset.values()]) + 2
             test_datasets[name] = {
                 name: (preprocess_image(img, max_img_w, max_img_h, downscale), preprocess_labels(labels, self.label2id, max_label_len, include_sos_and_eos))
                 for name, (img, labels) in dataset.items()}
