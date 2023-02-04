@@ -1,7 +1,9 @@
+import numpy as np
 import pandas
 import torch
 import matplotlib.pyplot as plt
 import tqdm
+from PIL import Image
 from torch import nn
 
 import config
@@ -20,11 +22,17 @@ def pred_to_str(pred):
     return s
 
 
-def show_generate(model, loader, **kwargs):
+def show_generate(model, dataset: datasets.DatasetManager, loader, **kwargs):
     model.eval()
     with torch.no_grad():
         for img, true_output in loader.dataset:
-            inputs = img.unsqueeze(0).float().to(config.device)
+            # pad image to dataset max size
+            padded = torch.zeros((dataset.max_img_h, dataset.max_img_w), dtype=torch.float32)
+            padded[:img.shape[0], :img.shape[1]] = img
+            inputs = padded
+
+            inputs = inputs.unsqueeze(0).float().to(config.device)
+
 
             # model(inputs, true_output)
             # print(model.result)
@@ -38,7 +46,10 @@ def show_generate(model, loader, **kwargs):
             s1 = pred_to_str(true_output.cpu().numpy())
             s2 = pred_to_str(result.cpu().numpy())
 
-            plt.imshow(img)
+            # im = Image.fromarray((img.numpy() * 255).astype(np.uint8))
+            # im.save(f"../reports/final_report/images/img.png")
+
+            plt.imshow(img, cmap="gray")
             plt.title(f"True: {s1}\nPred: {s2}")
             plt.show()
             # break
@@ -150,14 +161,35 @@ def compute_model_metrics(model: TrOCR, dataset: datasets.DatasetManager, num_be
             # break
 
 
+def print_dataset_stats(dataloaders, name=""):
+    total = 0
+    lengths = []
+    img_widths = []
+    img_heights = []
+    for dataloader in dataloaders:
+        for img, output in dataloader.dataset:
+            lengths.append(len(output))
+            img_widths.append(img.shape[1])
+            img_heights.append(img.shape[0])
+            total += 1
+
+    print()
+    print(name)
+    print("Total:", total)
+    quartiles = [0, 0.25, 0.5, 0.75, 1]
+    for metric_name, metric in zip(["Length", "Image width", "Image height"], [lengths, img_widths, img_heights]):
+        print(metric_name, "quartiles:", [round(np.quantile(metric, q), 2) for q in quartiles])
+
+
 if __name__ == '__main__':
 
-
     crohme = datasets.DatasetManager(datasets.CROHME, batch_size=config.batch_size, precompute_padding=config.precompute_padding, batch_padding=config.batch_padding, downscale=config.downscale)
-    print("Train size:", len(crohme.train_loader.dataset))
-    print("Test size 2014:", len(crohme.test_loaders['TEST14'].dataset))
-    print("Test size 2016:", len(crohme.test_loaders['TEST16'].dataset))
-    print("Test size 2019:", len(crohme.test_loaders['TEST19'].dataset))
+
+    # print_dataset_stats([crohme.train_loader], "Train")
+    # print_dataset_stats([crohme.test_loaders["TEST14"]], "Test14")
+    # print_dataset_stats([crohme.test_loaders["TEST16"]], "Test16")
+    # print_dataset_stats([crohme.test_loaders["TEST19"]], "Test19")
+    print_dataset_stats([crohme.train_loader, crohme.test_loaders["TEST14"], crohme.test_loaders["TEST16"], crohme.test_loaders["TEST19"]], "All")
 
     # model = TrOCR(crohme)
     # model = TrOCR.load_from_checkpoint("checkpoints/CNN_V1-3jxjprsy/epoch=epoch=414-step=step=57685-val_loss=val_loss=0.1211.ckpt", dataset=crohme)
@@ -173,19 +205,19 @@ if __name__ == '__main__':
     # model = torch.load("final_models/CNN-V2.pt")
     # model = torch.load("final_models/CNN-V3.pt")
 
-    model = torch.load("final_models/WAP-1_updated.pt")
-    model.decoder.dropout = nn.Dropout(0)
+    # model = torch.load("final_models/WAP-1_updated.pt")
+    # model.decoder.dropout = nn.Dropout(0)
 
-    # model = torch.load("final_models/WAP-2.pt")
+    model = torch.load("final_models/WAP-2.pt")
 
     model = model.to(config.device)
     model.eval()
     num_beams = 10
 
     # loader = crohme.train_loader
-    loader = crohme.test_loaders["TEST14"]
-    show_generate(model, loader, num_beams=num_beams)
+    # loader = crohme.test_loaders["TEST14"]
+    # show_generate(model, crohme, loader, num_beams=num_beams)
 
-    # show_pos_embeddings(model)
+    show_pos_embeddings(model)
 
     compute_model_metrics(model, crohme, num_beams=num_beams)
