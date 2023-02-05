@@ -205,7 +205,7 @@ def compute_model_metrics(model: TrOCR, dataset: datasets.DatasetManager, num_be
                 decoded = model.generate(inputs, max_length=max_len, num_beams=num_beams, **generate_kwargs)
 
                 metrics_dict = metrics(dataset, decoded[0].detach().cpu().numpy(), output)
-                df = df.append(metrics_dict, ignore_index=True)
+                df = pandas.concat([df, pandas.DataFrame(metrics_dict, index=[0])], ignore_index=True)
             #     break
             print(test_name)
             print(df.mean().round(2))
@@ -249,6 +249,7 @@ if __name__ == '__main__':
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/Model_V4-3khbx46l/epoch=54-step=07645-last.ckpt", dataset=crohme)
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WAP-2f0odbz4/epoch=499-step=69500-last.ckpt", dataset=crohme)
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WS-WAP-1ugpg6mc/epoch=499-step=69500-last.ckpt", dataset=crohme)
+    model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WS-WAP-pq3bmo62/epoch=08-step=01251-last.ckpt", dataset=crohme)
 
     # torch.save(model, "final_models/WAP-2.pt")
 
@@ -259,7 +260,7 @@ if __name__ == '__main__':
     # model = torch.load("final_models/WAP-1_updated.pt")
     # model.decoder.dropout = nn.Dropout(0)
 
-    model = torch.load("final_models/WAP-2.pt")
+    # model = torch.load("final_models/WAP-2.pt")  # best model
 
     model = model.to(config.device)
     model.eval()
@@ -267,11 +268,11 @@ if __name__ == '__main__':
 
     # Generate and show some examples
     # loader = crohme.train_loader
-    loader = crohme.test_loaders["TEST14"]
-    show_generate(model, crohme, loader, num_beams=num_beams, output_attentions=True)
+    # loader = crohme.test_loaders["TEST14"]
+    # show_generate(model, crohme, loader, num_beams=num_beams, output_attentions=True)
 
     # Show positional embeddings
     # show_pos_embeddings(model)
 
     # Compute metrics
-    # compute_model_metrics(model, crohme, num_beams=num_beams)
+    compute_model_metrics(model, crohme, num_beams=num_beams)

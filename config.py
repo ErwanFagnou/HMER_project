@@ -19,7 +19,7 @@ pretrain_learn_encoder_positional_embeddings = True
 
 use_gabor_position_embeddings = True
 gabor_embeddings_size = 64
-project_position_embeddings = True
+project_position_embeddings = False
 
 use_past_true_outputs = True
 attention_on_past = True

@@ -1,6 +1,6 @@
 torch
 torchvision
 torchaudio
-pytorch-lightning
+pytorch-lightning==1.8.1
 transformers
 wandb
