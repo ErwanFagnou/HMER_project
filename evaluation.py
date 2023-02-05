@@ -1,3 +1,5 @@
+import math
+
 import numpy as np
 import pandas
 import torch
@@ -10,13 +12,17 @@ import config
 import datasets
 from models.vision_transformer import TrOCR, CustomEncoderDecoder
 
+# set matplotlib font to Roman
+plt.rcParams["mathtext.fontset"] = "cm"
+plt.rcParams["font.family"] = "STIXGeneral"
+
 
 def pred_to_str(pred):
     s = ""
     for i in pred:
         if i not in [crohme.label2id["<pad>"], crohme.label2id["<sos>"], crohme.label2id["<eos>"]]:
             word = crohme.id2label[i]
-            if len(word) >1:
+            if len(word) > 1:
                 word = " " + word + " "
             s += word
     return s
@@ -33,7 +39,6 @@ def show_generate(model, dataset: datasets.DatasetManager, loader, **kwargs):
 
             inputs = inputs.unsqueeze(0).float().to(config.device)
 
-
             # model(inputs, true_output)
             # print(model.result)
             # input("pause")
@@ -43,6 +48,7 @@ def show_generate(model, dataset: datasets.DatasetManager, loader, **kwargs):
             print("\nTrue:", pred_to_str(true_output.cpu().numpy()))
             print("Pred:",  pred_to_str(result.cpu().numpy()))
 
+            pred_ids = result.cpu().numpy()
             s1 = pred_to_str(true_output.cpu().numpy())
             s2 = pred_to_str(result.cpu().numpy())
 
@@ -52,6 +58,51 @@ def show_generate(model, dataset: datasets.DatasetManager, loader, **kwargs):
             plt.imshow(img, cmap="gray")
             plt.title(f"True: {s1}\nPred: {s2}")
             plt.show()
+
+            if input("Show attentions? (y/n)") == "y":
+
+                # with torch.enable_grad():
+                #     inputs = torch.autograd.Variable(inputs, requires_grad=True)
+                #     model.forward(inputs, result.unsqueeze(0), output_attentions=True)
+                #     # attentions = model.result.decoder_attentions
+                #     a = model.result.logits.squeeze(0).sum(dim=-1)
+                #
+                #     for i in range(result.shape[0]):
+                #         # attention.backward(torch.ones_like(attention), retain_graph=True)
+                #         a[i].backward(torch.ones_like(a[i]), retain_graph=True)
+                #         img_attn = inputs.grad.squeeze(0).cpu().numpy()
+                #         plt.imshow(np.abs(img_attn), vmin=0)
+                #         plt.show()
+
+                n_cols = 4
+                attentions = model.result.attentions
+                low_res_shape = (padded.shape[0] // model.encoder.total_pooling, padded.shape[1] // model.encoder.total_pooling)
+
+                fig, axs = plt.subplots(math.ceil(len(attentions) / n_cols), n_cols,
+                                        figsize=(n_cols * 3, math.ceil(len(attentions) / n_cols) * 3),
+                                        constrained_layout=True)
+
+                for i, attention in enumerate(attentions):
+                    attention = attention.squeeze(0).cpu().numpy()
+                    attention = attention.reshape(*low_res_shape)
+                    attention = attention.repeat(model.encoder.total_pooling, axis=0).repeat(model.encoder.total_pooling, axis=1)
+                    attention = attention[:img.shape[0], :img.shape[1]]
+
+                    # add attention in red
+                    img_attn = np.zeros((img.shape[0], img.shape[1], 3))
+                    img2 = 1 - img.float().numpy()
+                    img_attn[:, :, 0] = img2
+                    img_attn[:, :, 1] = img2 * (1 - attention)
+                    img_attn[:, :, 2] = img2 * (1 - attention)
+
+                    # img_attn = np.pad(img_attn, ((2, 2), (2, 2), (0, 0)), mode="constant", constant_values=0)
+                    ax = axs[i // n_cols, i % n_cols]
+                    ax.imshow(img_attn)
+                    ax.set_title(f"{crohme.id2label[pred_ids[i+1]]}")
+                    ax.axis("off")
+
+                plt.show()
+
             # break
 
 
@@ -212,12 +263,15 @@ if __name__ == '__main__':
 
     model = model.to(config.device)
     model.eval()
-    num_beams = 10
+    num_beams = None  # 10
 
+    # Generate and show some examples
     # loader = crohme.train_loader
-    # loader = crohme.test_loaders["TEST14"]
-    # show_generate(model, crohme, loader, num_beams=num_beams)
+    loader = crohme.test_loaders["TEST14"]
+    show_generate(model, crohme, loader, num_beams=num_beams, output_attentions=True)
 
-    show_pos_embeddings(model)
+    # Show positional embeddings
+    # show_pos_embeddings(model)
 
-    compute_model_metrics(model, crohme, num_beams=num_beams)
+    # Compute metrics
+    # compute_model_metrics(model, crohme, num_beams=num_beams)

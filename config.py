@@ -9,7 +9,7 @@ weights_only = True
 # Model
 name = "WS-WAP"
 
-weakly_supervised = True
+weakly_supervised = False
 detach_encoder_cnn = False
 ws_coefficient = 0.5
 

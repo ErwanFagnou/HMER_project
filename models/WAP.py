@@ -50,7 +50,7 @@ class WAPDecoder(PreTrainedModel):
         # final layers
         self.fc = nn.Linear(self.embedding_dim + self.hidden_dim + self.encoder_dim, nb_classes, bias=True)
 
-    def forward(self, encoder_outputs, input_ids, stop_at_id=None, **kwargs):
+    def forward(self, encoder_outputs, input_ids, output_attentions=False, **kwargs):
         # print('input_ids', input_ids.shape)
         # print('encoder_outputs', encoder_outputs.shape)
         embedded_seq = self.embedding(input_ids)
@@ -92,7 +92,12 @@ class WAPDecoder(PreTrainedModel):
 
         logits = self.fc(torch.stack(all_vectors, dim=1))
 
-        return ModelOutput(logits=logits, hidden_states=None, attentions=None)
+        if output_attentions:
+            attentions = att_weights
+        else:
+            attentions = None
+
+        return ModelOutput(logits=logits, hidden_states=None, attentions=attentions)
 
     def prepare_inputs_for_generation(self, input_ids, encoder_outputs, past=None, attention_mask=None, use_cache=None, **kwargs):
         # if model is used as a decoder in encoder-decoder model, the decoder attention mask is created on the fly

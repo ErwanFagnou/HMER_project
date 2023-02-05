@@ -53,12 +53,12 @@ class CNNEncoder(nn.Module):
     output_size = 256
     num_channels = [1, 16, 32, 64, 128, output_size]
     kernel_sizes = [4, 4, 4, 4, 4]
-    pooling = [2, 2, 2, 2, 1]
+    pooling = [2, 2, 2, 2, 2]
     # num_channels = [1, 16, 16, 16, 16, 32, 32, 32, output_size]
     # kernel_sizes = [3, 3, 3, 3, 3, 3, 3, 3]
     # pooling = [2, 1, 2, 1, 2, 1, 2, 1]
     dropouts = [0.2, 0.2, 0.2, 0, 0, 0]
-    total_pooling = 16  # prod of pooling
+    total_pooling = 32  # prod of pooling
     cnn_activation_cls = nn.ELU
     fc_activation_cls = nn.ELU
     dropout_rate = 0.2
@@ -355,12 +355,12 @@ class CustomEncoderDecoder(HMERModel):
             params = None
         return super().configure_optimizers(params)
 
-    def forward(self, pixel_values, labels=None, sequence_length=0):
+    def forward(self, pixel_values, labels=None, sequence_length=0, **kwargs):
         sequence_length = labels.shape[1] if labels is not None else sequence_length
         x = pixel_values.unsqueeze(1)  # add channel dim
 
         encoder_outputs = self.encoder(x)
-        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, labels)
+        decoder_outputs = self.decoder(encoder_outputs.last_hidden_state, labels, **kwargs)
 
         ce_loss_fn = CrossEntropyLoss(label_smoothing=config.label_smoothing)
         loss = ce_loss_fn(decoder_outputs.logits.reshape(-1, self.vocab_size), labels.view(-1))
@@ -385,6 +385,7 @@ class CustomEncoderDecoder(HMERModel):
         self.result = Seq2SeqLMOutput(
             loss=loss,
             logits=decoder_outputs.logits,
+            decoder_attentions=decoder_outputs.attentions,
         )
 
         return loss
@@ -400,8 +401,9 @@ class CustomEncoderDecoder(HMERModel):
 
         input_ids = torch.full((pixel_values.shape[0], 1), self.bos_token_id, dtype=torch.long, device=pixel_values.device)
 
-        decoded = self.decoder.generate(encoder_outputs=encoder_outputs.last_hidden_state,
-                                        input_ids=input_ids,
-                                        **kwargs)
+        self.result = self.decoder.generate(encoder_outputs=encoder_outputs.last_hidden_state,
+                                            input_ids=input_ids,
+                                            return_dict_in_generate=True,
+                                            **kwargs)
 
-        return decoded
+        return self.result.sequences
