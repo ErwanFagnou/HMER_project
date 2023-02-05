@@ -5,7 +5,7 @@ from pytorch_lightning.loggers import WandbLogger
 
 import config
 import datasets
-from models.vision_transformer import TrOCR, CustomEncoderDecoder
+from models.vision_transformer import TrOCR, CustomEncoderDecoder, CNNEncoder
 
 if __name__ == '__main__':
     crohme = datasets.DatasetManager(
@@ -18,8 +18,19 @@ if __name__ == '__main__':
     )
     print(crohme.max_img_h, crohme.max_img_w, crohme.max_label_len)
 
-    model = CustomEncoderDecoder(crohme)
+    # model = CustomEncoderDecoder(crohme)
     # model = TrOCR(crohme)
+
+    model = torch.load("final_models/WAP-2.pt")
+    for param in model.parameters():
+        param.requires_grad = False
+    del model.encoder.pos_embeddings
+    model.encoder.pos_embeddings = CNNEncoder(crohme).pos_embeddings
+    model.use_gabor_position_embeddings = True
+    model.gabor_embeddings_size = config.gabor_embeddings_size
+    model.project_position_embeddings = config.project_position_embeddings
+
+    print(model.encoder.pos_embeddings)
 
     if config.reload_from_checkpoint and config.weights_only:
         print(f'Reloading weights from checkpoint {config.reload_from_checkpoint}')
