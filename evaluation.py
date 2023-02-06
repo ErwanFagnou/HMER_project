@@ -95,7 +95,7 @@ def show_generate(model, dataset: datasets.DatasetManager, loader, **kwargs):
                     img_attn[:, :, 1] = img2 * (1 - attention)
                     img_attn[:, :, 2] = img2 * (1 - attention)
 
-                    # img_attn = np.pad(img_attn, ((2, 2), (2, 2), (0, 0)), mode="constant", constant_values=0)
+                    img_attn = np.pad(img_attn, ((2, 2), (2, 2), (0, 0)), mode="constant", constant_values=0)
                     ax = axs[i // n_cols, i % n_cols]
                     ax.imshow(img_attn)
                     ax.set_title(f"{crohme.id2label[pred_ids[i+1]]}")
@@ -108,9 +108,27 @@ def show_generate(model, dataset: datasets.DatasetManager, loader, **kwargs):
 
 def show_pos_embeddings(model: TrOCR):
     pe = model.encoder.get_position_embeddings().detach().cpu().numpy()
-    for i in range(pe.shape[3]):
-        plt.imshow(pe[0, :, :, i])
-        plt.show()
+
+    n_cols = 2
+    n_rows = 4
+
+    fig, axs = plt.subplots(n_rows, n_cols, figsize=(n_cols * 1 * 4, n_rows * 1), constrained_layout=True)
+    for i in range(n_rows * n_cols):
+        ax = axs[i // n_cols, i % n_cols]
+        img = pe[0, :, :, i]
+        img = img.repeat(4, axis=0).repeat(4, axis=1)
+        img = np.pad(img, ((1, 1), (1, 1)), mode="constant", constant_values=-1)
+        ax.imshow(img, vmin=-.25, vmax=.25, cmap="seismic")
+        # ax.set_title(f"{i}")
+        ax.axis("off")
+
+        # bottom colorbar
+        # if i == 0:
+        #     cax = fig.add_axes([0.1, 0.1, 0.8, 0.03])
+        #     cbar = plt.colorbar(ax.images[0], cax=cax, orientation="horizontal")
+        #     cbar.set_label("Positional embedding value")
+
+    plt.show()
 
 
 def edit_distance(seq1, seq2):
@@ -249,7 +267,7 @@ if __name__ == '__main__':
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/Model_V4-3khbx46l/epoch=54-step=07645-last.ckpt", dataset=crohme)
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WAP-2f0odbz4/epoch=499-step=69500-last.ckpt", dataset=crohme)
     # model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WS-WAP-1ugpg6mc/epoch=499-step=69500-last.ckpt", dataset=crohme)
-    model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WS-WAP-pq3bmo62/epoch=08-step=01251-last.ckpt", dataset=crohme)
+    model = CustomEncoderDecoder.load_from_checkpoint("checkpoints/WS-WAP-ik0dgt27/epoch=499-step=69500-last.ckpt", dataset=crohme)
 
     # torch.save(model, "final_models/WAP-2.pt")
 
@@ -272,7 +290,7 @@ if __name__ == '__main__':
     # show_generate(model, crohme, loader, num_beams=num_beams, output_attentions=True)
 
     # Show positional embeddings
-    # show_pos_embeddings(model)
+    show_pos_embeddings(model)
 
     # Compute metrics
-    compute_model_metrics(model, crohme, num_beams=num_beams)
+    # compute_model_metrics(model, crohme, num_beams=num_beams)
